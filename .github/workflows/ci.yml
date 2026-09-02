@@ -39,9 +39,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.34.3
       - name: Start Supabase Local Stack
         run: supabase start
+      - name: Reset Supabase Database
+        run: supabase db reset
       - name: Run Supabase DB RLS and Security Tests
         run: supabase test db
       - name: Verify Generated TypeScript Types Match Database Schema
