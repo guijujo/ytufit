@@ -301,11 +301,42 @@ export type Database = {
           },
         ];
       };
+      gyms: {
+        Row: {
+          created_at: string;
+          id: string;
+          name: string;
+          slug: string;
+          status: string;
+          timezone: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          name: string;
+          slug: string;
+          status?: string;
+          timezone?: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          name?: string;
+          slug?: string;
+          status?: string;
+          timezone?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       membership_plans: {
         Row: {
           access_limit: number | null;
           access_type: Database['public']['Enums']['membership_access_type'];
           created_at: string;
+          currency: string;
           deleted_at: string | null;
           description: string | null;
           duration_days: number;
@@ -318,12 +349,12 @@ export type Database = {
           status: Database['public']['Enums']['membership_plan_status'];
           target: number | null;
           updated_at: string;
-          currency: string;
         };
         Insert: {
           access_limit?: number | null;
           access_type: Database['public']['Enums']['membership_access_type'];
           created_at?: string;
+          currency?: string;
           deleted_at?: string | null;
           description?: string | null;
           duration_days: number;
@@ -336,12 +367,12 @@ export type Database = {
           status?: Database['public']['Enums']['membership_plan_status'];
           target?: number | null;
           updated_at?: string;
-          currency?: string;
         };
         Update: {
           access_limit?: number | null;
           access_type?: Database['public']['Enums']['membership_access_type'];
           created_at?: string;
+          currency?: string;
           deleted_at?: string | null;
           description?: string | null;
           duration_days?: number;
@@ -354,7 +385,6 @@ export type Database = {
           status?: Database['public']['Enums']['membership_plan_status'];
           target?: number | null;
           updated_at?: string;
-          currency?: string;
         };
         Relationships: [
           {
@@ -451,36 +481,6 @@ export type Database = {
           },
         ];
       };
-      gyms: {
-        Row: {
-          created_at: string;
-          id: string;
-          name: string;
-          slug: string;
-          status: string;
-          timezone: string;
-          updated_at: string;
-        };
-        Insert: {
-          created_at?: string;
-          id?: string;
-          name: string;
-          slug: string;
-          status?: string;
-          timezone?: string;
-          updated_at?: string;
-        };
-        Update: {
-          created_at?: string;
-          id?: string;
-          name?: string;
-          slug?: string;
-          status?: string;
-          timezone?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
       platform_admins: {
         Row: {
           created_at: string;
@@ -558,8 +558,19 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      archive_membership_plan: { Args: { p_plan_id: string }; Returns: string };
+      archive_membership_plan: {
+        Args: { p_plan_id: string };
+        Returns: string;
+      };
+      archiveMembershipPlan: {
+        Args: { p_plan_id: string };
+        Returns: string;
+      };
       cancel_attendance: {
+        Args: { p_attendance_id: string; p_reason: string };
+        Returns: string;
+      };
+      cancelAttendance: {
         Args: { p_attendance_id: string; p_reason: string };
         Returns: string;
       };
@@ -567,7 +578,20 @@ export type Database = {
         Args: { p_membership_id: string; p_reason: string };
         Returns: string;
       };
+      cancelMembership: {
+        Args: { p_membership_id: string; p_reason: string };
+        Returns: string;
+      };
       change_membership_plan: {
+        Args: {
+          p_membership_id: string;
+          p_new_plan_id: string;
+          p_reason?: string;
+          p_starts_at?: string;
+        };
+        Returns: string;
+      };
+      changeMembershipPlan: {
         Args: {
           p_membership_id: string;
           p_new_plan_id: string;
@@ -584,19 +608,41 @@ export type Database = {
         };
         Returns: string;
       };
+      createMembership: {
+        Args: {
+          p_gym_member_id: string;
+          p_membership_plan_id: string;
+          p_starts_at?: string;
+        };
+        Returns: string;
+      };
       create_membership_plan: {
         Args: {
-          p_access_limit: number | null;
+          p_access_limit: number;
           p_access_type: Database['public']['Enums']['membership_access_type'];
           p_currency: string;
-          p_description: string | null;
+          p_description: string;
           p_duration_days: number;
-          p_frequency_period:
-            Database['public']['Enums']['membership_frequency_period'] | null;
+          p_frequency_period: Database['public']['Enums']['membership_frequency_period'];
           p_gym_id: string;
           p_name: string;
           p_price: number;
-          p_target: number | null;
+          p_target: number;
+        };
+        Returns: string;
+      };
+      createMembershipPlan: {
+        Args: {
+          p_access_limit: number;
+          p_access_type: Database['public']['Enums']['membership_access_type'];
+          p_currency: string;
+          p_description: string;
+          p_duration_days: number;
+          p_frequency_period: Database['public']['Enums']['membership_frequency_period'];
+          p_gym_id: string;
+          p_name: string;
+          p_price: number;
+          p_target: number;
         };
         Returns: string;
       };
@@ -610,73 +656,6 @@ export type Database = {
         };
         Returns: string;
       };
-      renew_membership: {
-        Args: { p_membership_id: string; p_starts_at?: string };
-        Returns: string;
-      };
-      resume_membership: { Args: { p_membership_id: string }; Returns: string };
-      suspend_membership: {
-        Args: { p_membership_id: string };
-        Returns: string;
-      };
-      update_membership_plan: {
-        Args: {
-          p_access_limit: number | null;
-          p_access_type: Database['public']['Enums']['membership_access_type'];
-          p_currency: string;
-          p_description: string | null;
-          p_duration_days: number;
-          p_frequency_period:
-            Database['public']['Enums']['membership_frequency_period'] | null;
-          p_name: string;
-          p_plan_id: string;
-          p_price: number;
-          p_target: number | null;
-        };
-        Returns: string;
-      };
-      archiveMembershipPlan: { Args: { p_plan_id: string }; Returns: string };
-      cancelAttendance: {
-        Args: { p_attendance_id: string; p_reason: string };
-        Returns: string;
-      };
-      cancelMembership: {
-        Args: { p_membership_id: string; p_reason: string };
-        Returns: string;
-      };
-      changeMembershipPlan: {
-        Args: {
-          p_membership_id: string;
-          p_new_plan_id: string;
-          p_reason?: string;
-          p_starts_at?: string;
-        };
-        Returns: string;
-      };
-      createMembership: {
-        Args: {
-          p_gym_member_id: string;
-          p_membership_plan_id: string;
-          p_starts_at?: string;
-        };
-        Returns: string;
-      };
-      createMembershipPlan: {
-        Args: {
-          p_access_limit: number | null;
-          p_access_type: Database['public']['Enums']['membership_access_type'];
-          p_currency: string;
-          p_description: string | null;
-          p_duration_days: number;
-          p_frequency_period:
-            Database['public']['Enums']['membership_frequency_period'] | null;
-          p_gym_id: string;
-          p_name: string;
-          p_price: number;
-          p_target: number | null;
-        };
-        Returns: string;
-      };
       registerAttendance: {
         Args: {
           p_gym_member_id: string;
@@ -687,25 +666,57 @@ export type Database = {
         };
         Returns: string;
       };
+      renew_membership: {
+        Args: { p_membership_id: string; p_starts_at?: string };
+        Returns: string;
+      };
       renewMembership: {
         Args: { p_membership_id: string; p_starts_at?: string };
         Returns: string;
       };
-      resumeMembership: { Args: { p_membership_id: string }; Returns: string };
-      suspendMembership: { Args: { p_membership_id: string }; Returns: string };
-      updateMembershipPlan: {
+      resume_membership: {
+        Args: { p_membership_id: string };
+        Returns: string;
+      };
+      resumeMembership: {
+        Args: { p_membership_id: string };
+        Returns: string;
+      };
+      suspend_membership: {
+        Args: { p_membership_id: string };
+        Returns: string;
+      };
+      suspendMembership: {
+        Args: { p_membership_id: string };
+        Returns: string;
+      };
+      update_membership_plan: {
         Args: {
-          p_access_limit: number | null;
+          p_access_limit: number;
           p_access_type: Database['public']['Enums']['membership_access_type'];
           p_currency: string;
-          p_description: string | null;
+          p_description: string;
           p_duration_days: number;
-          p_frequency_period:
-            Database['public']['Enums']['membership_frequency_period'] | null;
+          p_frequency_period: Database['public']['Enums']['membership_frequency_period'];
           p_name: string;
           p_plan_id: string;
           p_price: number;
-          p_target: number | null;
+          p_target: number;
+        };
+        Returns: string;
+      };
+      updateMembershipPlan: {
+        Args: {
+          p_access_limit: number;
+          p_access_type: Database['public']['Enums']['membership_access_type'];
+          p_currency: string;
+          p_description: string;
+          p_duration_days: number;
+          p_frequency_period: Database['public']['Enums']['membership_frequency_period'];
+          p_name: string;
+          p_plan_id: string;
+          p_price: number;
+          p_target: number;
         };
         Returns: string;
       };
