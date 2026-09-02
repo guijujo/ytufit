@@ -546,15 +546,17 @@ DECLARE
   v_count INTEGER; v_week_start DATE; v_month_start DATE;
 BEGIN
   IF v_actor IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE = '42501'; END IF;
+  SELECT gym_id INTO v_gym_id FROM public.gym_members WHERE id = p_gym_member_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Gym member not found' USING ERRCODE = 'P0002'; END IF;
+  PERFORM private.assert_gym_admin(v_gym_id);
+  SELECT g.timezone INTO v_timezone
+    FROM public.gym_members gm JOIN public.gyms g ON g.id = gm.gym_id
+    WHERE gm.id = p_gym_member_id AND gm.status = 'ACTIVE'
+    FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Active gym member not found' USING ERRCODE = '42501'; END IF;
   IF p_method <> 'MANUAL' THEN
     RAISE EXCEPTION 'Only MANUAL attendance is enabled in v2.0.2' USING ERRCODE = '42501';
   END IF;
-  SELECT gm.gym_id, g.timezone INTO v_gym_id, v_timezone
-    FROM public.gym_members gm JOIN public.gyms g ON g.id = gm.gym_id
-    WHERE gm.id = p_gym_member_id AND gm.status = 'ACTIVE'
-      AND private.has_gym_role(gm.gym_id, 'GYM_ADMIN')
-    FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Active gym member or authorization not found' USING ERRCODE = '42501'; END IF;
   IF p_occurred_at IS NULL THEN RAISE EXCEPTION 'occurred_at is required' USING ERRCODE = '22023'; END IF;
   v_date := (p_occurred_at AT TIME ZONE v_timezone)::date;
   IF p_membership_id IS NULL THEN
@@ -617,12 +619,15 @@ RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = pg_catalog, public
 AS $$
 DECLARE v_attendance public.attendances%ROWTYPE; v_actor UUID; v_id UUID;
+  v_gym_id UUID;
 BEGIN
   IF length(btrim(COALESCE(p_reason, ''))) = 0 THEN RAISE EXCEPTION 'Reason is required' USING ERRCODE = '22023'; END IF;
+  SELECT gym_id INTO v_gym_id FROM public.attendances WHERE id = p_attendance_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Attendance not found' USING ERRCODE = 'P0002'; END IF;
+  v_actor := private.assert_gym_admin(v_gym_id);
   SELECT * INTO v_attendance FROM public.attendances
     WHERE id = p_attendance_id AND status = 'VALID' FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Only a valid attendance can be cancelled' USING ERRCODE = '55000'; END IF;
-  v_actor := private.assert_gym_admin(v_attendance.gym_id);
   PERFORM set_config('ytufit.command', 'attendance', true);
   UPDATE public.attendances SET status = 'CANCELLED', cancellation_reason = p_reason,
     cancelled_by = v_actor, cancelled_at = clock_timestamp()

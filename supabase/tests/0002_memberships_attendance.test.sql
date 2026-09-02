@@ -1,7 +1,7 @@
 -- pgTAP tests for YtuFit v2.0.2 membership and attendance boundaries.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap;
-SELECT plan(41);
+SELECT plan(40);
 
 SET LOCAL ROLE authenticated;
 SET LOCAL "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated","email":"admin-a@ytufit.local"}';
@@ -83,6 +83,8 @@ SET LOCAL "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111",
 SELECT public.renew_membership('30000000-0000-0000-0000-000000000003') IS NOT NULL;
 SELECT results_eq($$ SELECT status FROM public.memberships WHERE id = '30000000-0000-0000-0000-000000000003' $$, $$ VALUES ('EXPIRED'::public.membership_status) $$, 'Expired active membership is normalized before renewal');
 SELECT results_eq($$ SELECT count(*)::integer FROM public.memberships WHERE gym_member_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' AND status = 'ACTIVE' $$, $$ VALUES (1) $$, 'Renewal leaves one active membership');
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}';
 SELECT throws_ok($$ SELECT public.register_attendance('cccccccc-cccc-cccc-cccc-cccccccccccc', now(), 'MANUAL', NULL, 'member') $$, '42501', NULL, 'Member remains unable to register after renewal');
 SET LOCAL ROLE anon;
 RESET "request.jwt.claims";
