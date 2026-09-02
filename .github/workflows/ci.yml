@@ -48,13 +48,6 @@ jobs:
         run: supabase test db
       - name: Verify Generated TypeScript Types Match Database Schema
         run: |
-          supabase gen types typescript --local > /tmp/database.ts
-          cp /tmp/database.ts packages/types/src/database.ts
+          supabase gen types typescript --local > packages/types/src/database.ts
           pnpm format
           git diff --exit-code packages/types/src/database.ts
-      - name: Upload generated types for diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: generated-database-types
-          path: packages/types/src/database.ts
