@@ -37,9 +37,9 @@ export type Database = {
       attendances: {
         Row: {
           attendance_date: string;
+          cancellation_reason: string | null;
           cancelled_at: string | null;
           cancelled_by: string | null;
-          cancellation_reason: string | null;
           created_at: string;
           created_by: string | null;
           gym_id: string;
@@ -54,9 +54,9 @@ export type Database = {
         };
         Insert: {
           attendance_date: string;
+          cancellation_reason?: string | null;
           cancelled_at?: string | null;
           cancelled_by?: string | null;
-          cancellation_reason?: string | null;
           created_at?: string;
           created_by?: string | null;
           gym_id: string;
@@ -71,9 +71,9 @@ export type Database = {
         };
         Update: {
           attendance_date?: string;
+          cancellation_reason?: string | null;
           cancelled_at?: string | null;
           cancelled_by?: string | null;
-          cancellation_reason?: string | null;
           created_at?: string;
           created_by?: string | null;
           gym_id?: string;
@@ -107,22 +107,6 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'memberships';
             referencedColumns: ['id', 'gym_id'];
-          },
-          {
-            foreignKeyName: 'attendances_created_by_fkey';
-            columns: ['created_by'];
-            isOneToOne: false;
-            referencedRelation: 'users';
-            referencedColumns: ['id'];
-            referencedSchema: 'auth';
-          },
-          {
-            foreignKeyName: 'attendances_cancelled_by_fkey';
-            columns: ['cancelled_by'];
-            isOneToOne: false;
-            referencedRelation: 'users';
-            referencedColumns: ['id'];
-            referencedSchema: 'auth';
           },
         ];
       };
