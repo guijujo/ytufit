@@ -34,6 +34,98 @@ export type Database = {
   };
   public: {
     Tables: {
+      attendances: {
+        Row: {
+          attendance_date: string;
+          cancelled_at: string | null;
+          cancelled_by: string | null;
+          cancellation_reason: string | null;
+          created_at: string;
+          created_by: string | null;
+          gym_id: string;
+          gym_member_id: string;
+          id: string;
+          membership_id: string | null;
+          method: Database['public']['Enums']['attendance_method'];
+          occurred_at: string;
+          source_reference: string | null;
+          status: Database['public']['Enums']['attendance_status'];
+          updated_at: string;
+        };
+        Insert: {
+          attendance_date: string;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+          cancellation_reason?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          gym_id: string;
+          gym_member_id: string;
+          id?: string;
+          membership_id?: string | null;
+          method: Database['public']['Enums']['attendance_method'];
+          occurred_at: string;
+          source_reference?: string | null;
+          status?: Database['public']['Enums']['attendance_status'];
+          updated_at?: string;
+        };
+        Update: {
+          attendance_date?: string;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+          cancellation_reason?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          gym_id?: string;
+          gym_member_id?: string;
+          id?: string;
+          membership_id?: string | null;
+          method?: Database['public']['Enums']['attendance_method'];
+          occurred_at?: string;
+          source_reference?: string | null;
+          status?: Database['public']['Enums']['attendance_status'];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'attendances_gym_id_fkey';
+            columns: ['gym_id'];
+            isOneToOne: false;
+            referencedRelation: 'gyms';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'attendances_gym_member_fk';
+            columns: ['gym_member_id', 'gym_id'];
+            isOneToOne: false;
+            referencedRelation: 'gym_members';
+            referencedColumns: ['id', 'gym_id'];
+          },
+          {
+            foreignKeyName: 'attendances_membership_fk';
+            columns: ['membership_id', 'gym_id'];
+            isOneToOne: false;
+            referencedRelation: 'memberships';
+            referencedColumns: ['id', 'gym_id'];
+          },
+          {
+            foreignKeyName: 'attendances_created_by_fkey';
+            columns: ['created_by'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+            referencedSchema: 'auth';
+          },
+          {
+            foreignKeyName: 'attendances_cancelled_by_fkey';
+            columns: ['cancelled_by'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+            referencedSchema: 'auth';
+          },
+        ];
+      };
       gym_invitations: {
         Row: {
           accepted_at: string | null;
@@ -206,98 +298,6 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'gyms';
             referencedColumns: ['id'];
-          },
-        ];
-      };
-      attendances: {
-        Row: {
-          attendance_date: string;
-          cancelled_at: string | null;
-          cancelled_by: string | null;
-          cancellation_reason: string | null;
-          created_at: string;
-          created_by: string | null;
-          gym_id: string;
-          gym_member_id: string;
-          id: string;
-          membership_id: string | null;
-          method: Database['public']['Enums']['attendance_method'];
-          occurred_at: string;
-          source_reference: string | null;
-          status: Database['public']['Enums']['attendance_status'];
-          updated_at: string;
-        };
-        Insert: {
-          attendance_date: string;
-          cancelled_at?: string | null;
-          cancelled_by?: string | null;
-          cancellation_reason?: string | null;
-          created_at?: string;
-          created_by?: string | null;
-          gym_id: string;
-          gym_member_id: string;
-          id?: string;
-          membership_id?: string | null;
-          method: Database['public']['Enums']['attendance_method'];
-          occurred_at: string;
-          source_reference?: string | null;
-          status?: Database['public']['Enums']['attendance_status'];
-          updated_at?: string;
-        };
-        Update: {
-          attendance_date?: string;
-          cancelled_at?: string | null;
-          cancelled_by?: string | null;
-          cancellation_reason?: string | null;
-          created_at?: string;
-          created_by?: string | null;
-          gym_id?: string;
-          gym_member_id?: string;
-          id?: string;
-          membership_id?: string | null;
-          method?: Database['public']['Enums']['attendance_method'];
-          occurred_at?: string;
-          source_reference?: string | null;
-          status?: Database['public']['Enums']['attendance_status'];
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: 'attendances_gym_id_fkey';
-            columns: ['gym_id'];
-            isOneToOne: false;
-            referencedRelation: 'gyms';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'attendances_gym_member_fk';
-            columns: ['gym_member_id', 'gym_id'];
-            isOneToOne: false;
-            referencedRelation: 'gym_members';
-            referencedColumns: ['id', 'gym_id'];
-          },
-          {
-            foreignKeyName: 'attendances_membership_fk';
-            columns: ['membership_id', 'gym_id'];
-            isOneToOne: false;
-            referencedRelation: 'memberships';
-            referencedColumns: ['id', 'gym_id'];
-          },
-          {
-            foreignKeyName: 'attendances_created_by_fkey';
-            columns: ['created_by'];
-            isOneToOne: false;
-            referencedRelation: 'users';
-            referencedColumns: ['id'];
-            referencedSchema: 'auth';
-          },
-          {
-            foreignKeyName: 'attendances_cancelled_by_fkey';
-            columns: ['cancelled_by'];
-            isOneToOne: false;
-            referencedRelation: 'users';
-            referencedColumns: ['id'];
-            referencedSchema: 'auth';
           },
         ];
       };
@@ -570,12 +570,12 @@ export type Database = {
         Args: { p_attendance_id: string; p_reason: string };
         Returns: string;
       };
-      cancelAttendance: {
-        Args: { p_attendance_id: string; p_reason: string };
-        Returns: string;
-      };
       cancel_membership: {
         Args: { p_membership_id: string; p_reason: string };
+        Returns: string;
+      };
+      cancelAttendance: {
+        Args: { p_attendance_id: string; p_reason: string };
         Returns: string;
       };
       cancelMembership: {
@@ -608,14 +608,6 @@ export type Database = {
         };
         Returns: string;
       };
-      createMembership: {
-        Args: {
-          p_gym_member_id: string;
-          p_membership_plan_id: string;
-          p_starts_at?: string;
-        };
-        Returns: string;
-      };
       create_membership_plan: {
         Args: {
           p_access_limit: number;
@@ -628,6 +620,14 @@ export type Database = {
           p_name: string;
           p_price: number;
           p_target: number;
+        };
+        Returns: string;
+      };
+      createMembership: {
+        Args: {
+          p_gym_member_id: string;
+          p_membership_plan_id: string;
+          p_starts_at?: string;
         };
         Returns: string;
       };
