@@ -31,6 +31,6 @@
     "@react-native/metro-config": "0.86.3",
     "@types/react": "^19.1.12",
     "eslint": "^9.35.0",
-    "typescript": "^6.0.3"
+    "typescript": "^5.9.2"
   }
 }

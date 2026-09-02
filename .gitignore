@@ -12,3 +12,4 @@ web-build/
 !.env.example
 apps/mobile/.env
 apps/web/.env.local
+supabase/.temp/
