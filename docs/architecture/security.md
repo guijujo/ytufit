@@ -18,3 +18,20 @@
 El cliente puede leer los datos permitidos, crear su propia solicitud pendiente y cancelarla. No puede cambiar ownership, roles, tokens, timestamps de revisión ni estados de invitaciones. `approveJoinRequest`, `rejectJoinRequest`, `acceptGymInvitation` y `revokeGymInvitation` son contratos server-side: autentican al actor, comprueban el rol contextual, bloquean la fila, validan la transición, escriben los campos sensibles desde el servidor y ejecutan membership/role assignment de forma idempotente y transaccional. La migración deja esas transiciones fuera de UPDATE directo hasta exponer dichos comandos.
 
 Los comandos iniciales previstos incluyen aprobación y alta de miembros, asignación de roles, cambios/renovaciones de membresía, asistencias, workouts, rachas, comodines, logros y recompensas. Su contrato exacto se diseñará junto con el esquema, sin exponer mutaciones privilegiadas al cliente.
+
+## Membresías y asistencia
+
+Las tablas de planes, membresías y asistencias usan RLS `FORCE` con default
+deny: los socios solo leen sus propios contratos y eventos históricos, y los
+administradores solo leen filas de su gimnasio. Trainers no reciben acceso
+administrativo implícito. Las claves foráneas compuestas `(id, gym_id)` y los
+índices únicos parciales refuerzan estas fronteras incluso cuando RLS no aplica.
+
+Las mutaciones pasan por comandos `SECURITY DEFINER` con `search_path` fijo y
+ejecución revocada a `PUBLIC`. El servidor obtiene el gimnasio desde
+`gym_members`, obtiene precio y snapshots desde el plan, y deriva
+`attendance_date` usando la zona horaria del gimnasio. Memberships y
+asistencias son históricas: cambiar de plan cierra el contrato anterior y
+cancelar una asistencia conserva la fila. Los límites semanal, mensual y de
+accesos se derivan de eventos `VALID`; la restricción diaria es la defensa
+definitiva frente a carreras concurrentes.

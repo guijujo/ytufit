@@ -67,3 +67,77 @@ SELECT 'dddddddd-dddd-dddd-dddd-dddddddddddd'::uuid, r.id FROM public.roles r WH
 UNION ALL
 SELECT 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'::uuid, r.id FROM public.roles r WHERE r.name = 'MEMBER'
 ON CONFLICT (gym_member_id, role_id) DO NOTHING;
+
+-- 7. Membership plans (tenant-local commercial configuration)
+INSERT INTO public.membership_plans (
+  id, gym_id, name, description, access_type, access_limit,
+  frequency_period, target, price, currency, duration_days
+) VALUES
+  ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001',
+   'Tres por semana', 'Frecuencia semanal', 'WEEKLY_FREQUENCY', NULL, 'WEEK', 3, 30000, 'ARS', 30),
+  ('10000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001',
+   'Doce por mes', 'LÃƒÂ­mite mensual', 'MONTHLY_LIMIT', NULL, 'MONTH', 12, 36000, 'ARS', 30),
+  ('10000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001',
+   'Pase Libre', 'Acceso sin lÃƒÂ­mite comercial', 'UNLIMITED', NULL, NULL, NULL, 45000, 'ARS', 30),
+  ('20000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002',
+   'Plan Beta', 'Plan independiente de Gym Beta', 'ACCESS_COUNT', 10, NULL, NULL, 10000, 'ARS', 10)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  access_type = EXCLUDED.access_type,
+  access_limit = EXCLUDED.access_limit,
+  frequency_period = EXCLUDED.frequency_period,
+  target = EXCLUDED.target,
+  price = EXCLUDED.price,
+  currency = EXCLUDED.currency,
+  duration_days = EXCLUDED.duration_days,
+  status = 'ACTIVE',
+  deleted_at = NULL;
+
+-- 8. Contract snapshots for deterministic member history
+INSERT INTO public.memberships (
+  id, gym_id, gym_member_id, membership_plan_id, status, starts_at, ends_at,
+  contracted_price, currency, access_limit_snapshot, access_type_snapshot,
+  target_snapshot, period_snapshot
+) VALUES
+  ('30000000-0000-0000-0000-000000000001',
+   '00000000-0000-0000-0000-000000000001',
+   'cccccccc-cccc-cccc-cccc-cccccccccccc',
+   '10000000-0000-0000-0000-000000000001',
+   'ACTIVE', '2020-01-01 00:00:00+00', '2099-01-01 00:00:00+00',
+   30000, 'ARS', NULL, 'WEEKLY_FREQUENCY', 3, 'WEEK'),
+  ('30000000-0000-0000-0000-000000000002',
+   '00000000-0000-0000-0000-000000000002',
+   'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee',
+   '20000000-0000-0000-0000-000000000001',
+   'ACTIVE', '2020-01-01 00:00:00+00', '2099-01-01 00:00:00+00',
+   10000, 'ARS', 10, 'ACCESS_COUNT', NULL, NULL)
+ON CONFLICT (id) DO NOTHING;
+
+-- 9. Attendance history: valid rows and one retained cancellation.
+INSERT INTO public.attendances (
+  id, gym_id, gym_member_id, membership_id, attendance_date, occurred_at,
+  method, status, source_reference, created_by,
+  cancellation_reason, cancelled_by, cancelled_at
+) VALUES
+  ('40000000-0000-0000-0000-000000000001',
+   '00000000-0000-0000-0000-000000000001',
+   'cccccccc-cccc-cccc-cccc-cccccccccccc',
+   '30000000-0000-0000-0000-000000000001',
+   '2026-08-04', '2026-08-04 18:00:00+00', 'QR', 'VALID',
+   'seed-a-1', '33333333-3333-3333-3333-333333333333', NULL, NULL, NULL),
+  ('40000000-0000-0000-0000-000000000002',
+   '00000000-0000-0000-0000-000000000001',
+   'cccccccc-cccc-cccc-cccc-cccccccccccc',
+   '30000000-0000-0000-0000-000000000001',
+   '2026-08-05', '2026-08-05 18:00:00+00', 'MANUAL', 'CANCELLED',
+   'seed-a-cancelled', '33333333-3333-3333-3333-333333333333',
+   'Correction fixture', '11111111-1111-1111-1111-111111111111',
+   '2026-08-06 12:00:00+00'),
+  ('40000000-0000-0000-0000-000000000003',
+   '00000000-0000-0000-0000-000000000002',
+   'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee',
+   '30000000-0000-0000-0000-000000000002',
+   '2026-08-04', '2026-08-04 18:00:00+00', 'QR', 'VALID',
+   'seed-b-1', '55555555-5555-5555-5555-555555555555', NULL, NULL, NULL)
+ON CONFLICT (id) DO NOTHING;
