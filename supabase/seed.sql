@@ -57,13 +57,13 @@ ON CONFLICT (gym_id, user_id) DO NOTHING;
 
 -- 6. Gym Member Roles
 INSERT INTO public.gym_member_roles (gym_member_id, role_id)
-SELECT 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', r.id FROM public.roles r WHERE r.name = 'GYM_ADMIN'
+SELECT 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid, r.id FROM public.roles r WHERE r.name = 'GYM_ADMIN'
 UNION ALL
-SELECT 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', r.id FROM public.roles r WHERE r.name = 'TRAINER'
+SELECT 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'::uuid, r.id FROM public.roles r WHERE r.name = 'TRAINER'
 UNION ALL
-SELECT 'cccccccc-cccc-cccc-cccc-cccccccccccc', r.id FROM public.roles r WHERE r.name = 'MEMBER'
+SELECT 'cccccccc-cccc-cccc-cccc-cccccccccccc'::uuid, r.id FROM public.roles r WHERE r.name = 'MEMBER'
 UNION ALL
-SELECT 'dddddddd-dddd-dddd-dddd-dddddddddddd', r.id FROM public.roles r WHERE r.name = 'GYM_ADMIN'
+SELECT 'dddddddd-dddd-dddd-dddd-dddddddddddd'::uuid, r.id FROM public.roles r WHERE r.name = 'GYM_ADMIN'
 UNION ALL
-SELECT 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', r.id FROM public.roles r WHERE r.name = 'MEMBER'
+SELECT 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'::uuid, r.id FROM public.roles r WHERE r.name = 'MEMBER'
 ON CONFLICT (gym_member_id, role_id) DO NOTHING;
