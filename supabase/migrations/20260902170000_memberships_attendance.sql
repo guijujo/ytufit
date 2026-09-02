@@ -3,17 +3,17 @@
 -- intentionally have no client INSERT/UPDATE/DELETE policies.
 
 CREATE TYPE public.membership_access_type AS ENUM (
-  'WEEKLY_FREQUENCY',
-  'MONTHLY_LIMIT',
   'ACCESS_COUNT',
-  'UNLIMITED'
+  'MONTHLY_LIMIT',
+  'UNLIMITED',
+  'WEEKLY_FREQUENCY'
 );
 
-CREATE TYPE public.membership_frequency_period AS ENUM ('WEEK', 'MONTH');
+CREATE TYPE public.membership_frequency_period AS ENUM ('MONTH', 'WEEK');
 CREATE TYPE public.membership_plan_status AS ENUM ('ACTIVE', 'INACTIVE');
-CREATE TYPE public.membership_status AS ENUM ('ACTIVE', 'EXPIRED', 'CANCELLED', 'SUSPENDED');
-CREATE TYPE public.attendance_method AS ENUM ('QR', 'WORKOUT_STARTED', 'WORKOUT_COMPLETED', 'MANUAL');
-CREATE TYPE public.attendance_status AS ENUM ('VALID', 'CANCELLED');
+CREATE TYPE public.membership_status AS ENUM ('ACTIVE', 'CANCELLED', 'EXPIRED', 'SUSPENDED');
+CREATE TYPE public.attendance_method AS ENUM ('MANUAL', 'QR', 'WORKOUT_COMPLETED', 'WORKOUT_STARTED');
+CREATE TYPE public.attendance_status AS ENUM ('CANCELLED', 'VALID');
 
 CREATE TABLE public.membership_plans (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
