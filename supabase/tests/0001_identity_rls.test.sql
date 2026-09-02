@@ -6,7 +6,7 @@ BEGIN;
 -- 1. Install pgTAP if not present and declare plan
 CREATE EXTENSION IF NOT EXISTS pgtap;
 
-SELECT plan(13);
+SELECT plan(26);
 
 -- Test 1: Member A can read their own profile
 SET LOCAL ROLE authenticated;
@@ -130,6 +130,175 @@ SELECT throws_ok(
   '23505',
   NULL,
   'Cannot create multiple simultaneous PENDING join requests for same gym and user'
+);
+
+-- Fixtures for transition and cross-tenant tests
+INSERT INTO public.gym_join_requests (id, gym_id, user_id, status)
+VALUES
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01', '00000000-0000-0000-0000-000000000002', '55555555-5555-5555-5555-555555555555', 'PENDING')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.gym_invitations (
+  id, gym_id, email, role_id, invited_by, token_hash, status, expires_at
+)
+SELECT
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02',
+  '00000000-0000-0000-0000-000000000001',
+  'member-a@ytufit.local',
+  r.id,
+  '11111111-1111-1111-1111-111111111111',
+  'deterministic-token-hash',
+  'PENDING',
+  now() + interval '1 day'
+FROM public.roles r
+WHERE r.name = 'MEMBER'
+ON CONFLICT (id) DO NOTHING;
+
+-- Test 12: Admin A cannot modify a request from Gym B
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub": "11111111-1111-1111-1111-111111111111", "role": "authenticated"}';
+UPDATE public.gym_join_requests
+SET status = 'APPROVED'
+WHERE id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01';
+SET LOCAL ROLE postgres;
+SELECT results_eq(
+  $$ SELECT status FROM public.gym_join_requests WHERE id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01' $$,
+  $$ VALUES ('PENDING'::text) $$,
+  'Admin A cannot modify a join request from Gym B'
+);
+
+-- Test 13: Admin A cannot change join request ownership fields
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub": "11111111-1111-1111-1111-111111111111", "role": "authenticated"}';
+UPDATE public.gym_join_requests
+SET user_id = '55555555-5555-5555-5555-555555555555'
+WHERE gym_id = '00000000-0000-0000-0000-000000000001'
+  AND user_id = '33333333-3333-3333-3333-333333333333'
+  AND status = 'PENDING';
+SET LOCAL ROLE postgres;
+SELECT results_eq(
+  $$ SELECT user_id FROM public.gym_join_requests WHERE gym_id = '00000000-0000-0000-0000-000000000001' AND user_id = '33333333-3333-3333-3333-333333333333' AND status = 'PENDING' $$,
+  $$ VALUES ('33333333-3333-3333-3333-333333333333'::uuid) $$,
+  'Admin A cannot change join request user_id'
+);
+
+-- Test 14: Admin A cannot change a join request gym_id
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub": "11111111-1111-1111-1111-111111111111", "role": "authenticated"}';
+UPDATE public.gym_join_requests
+SET gym_id = '00000000-0000-0000-0000-000000000002'
+WHERE gym_id = '00000000-0000-0000-0000-000000000001'
+  AND user_id = '33333333-3333-3333-3333-333333333333'
+  AND status = 'PENDING';
+SET LOCAL ROLE postgres;
+SELECT is(
+  (SELECT gym_id::text FROM public.gym_join_requests WHERE user_id = '33333333-3333-3333-3333-333333333333' AND status = 'PENDING'),
+  '00000000-0000-0000-0000-000000000001',
+  'Admin A cannot change join request gym_id'
+);
+
+-- Test 15: Member cannot approve their own request
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub": "33333333-3333-3333-3333-333333333333", "role": "authenticated"}';
+SELECT throws_ok(
+  $$ UPDATE public.gym_join_requests
+     SET status = 'APPROVED'
+     WHERE gym_id = '00000000-0000-0000-0000-000000000001'
+       AND user_id = '33333333-3333-3333-3333-333333333333'
+       AND status = 'PENDING' $$,
+  NULL, NULL, 'Member cannot approve their own join request'
+);
+SET LOCAL ROLE postgres;
+SELECT is(
+  (SELECT status FROM public.gym_join_requests WHERE user_id = '33333333-3333-3333-3333-333333333333' AND status = 'PENDING'),
+  'PENDING',
+  'Member cannot approve their own join request'
+);
+
+-- Test 16: Trainer cannot approve requests
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub": "22222222-2222-2222-2222-222222222222", "role": "authenticated"}';
+UPDATE public.gym_join_requests
+SET status = 'APPROVED'
+WHERE gym_id = '00000000-0000-0000-0000-000000000001'
+  AND user_id = '33333333-3333-3333-3333-333333333333'
+  AND status = 'PENDING';
+SET LOCAL ROLE postgres;
+SELECT is(
+  (SELECT status FROM public.gym_join_requests WHERE user_id = '33333333-3333-3333-3333-333333333333' AND status = 'PENDING'),
+  'PENDING',
+  'Trainer cannot approve join requests'
+);
+
+-- Test 17: Member cannot modify role assignments
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub": "33333333-3333-3333-3333-333333333333", "role": "authenticated"}';
+SELECT throws_ok(
+  $$ INSERT INTO public.gym_member_roles (gym_member_id, role_id)
+     SELECT 'cccccccc-cccc-cccc-cccc-cccccccccccc', id FROM public.roles WHERE name = 'GYM_ADMIN' $$,
+  '42501', NULL, 'Member cannot modify role assignments'
+);
+
+-- Test 18: Admin A cannot assign roles to Gym B
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub": "11111111-1111-1111-1111-111111111111", "role": "authenticated"}';
+SELECT throws_ok(
+  $$ INSERT INTO public.gym_member_roles (gym_member_id, role_id)
+     SELECT 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', id FROM public.roles WHERE name = 'GYM_ADMIN' $$,
+  '42501', NULL, 'Admin A cannot assign roles to Gym B'
+);
+
+-- Test 19: An invitation from Gym A cannot create a Gym B membership
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub": "33333333-3333-3333-3333-333333333333", "role": "authenticated", "email": "member-a@ytufit.local"}';
+SELECT throws_ok(
+  $$ INSERT INTO public.gym_members (gym_id, user_id, status)
+     VALUES ('00000000-0000-0000-0000-000000000002', '33333333-3333-3333-3333-333333333333', 'ACTIVE') $$,
+  '42501', NULL, 'Invitation from Gym A cannot create a Gym B membership'
+);
+
+-- Test 20: Invited user cannot alter invitation role_id
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub": "33333333-3333-3333-3333-333333333333", "role": "authenticated", "email": "member-a@ytufit.local"}';
+UPDATE public.gym_invitations
+SET role_id = (SELECT id FROM public.roles WHERE name = 'GYM_ADMIN')
+WHERE id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02';
+SET LOCAL ROLE postgres;
+SELECT is(
+  (SELECT r.name FROM public.gym_invitations i JOIN public.roles r ON r.id = i.role_id WHERE i.id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02'),
+  'MEMBER',
+  'Invited user cannot alter invitation role_id'
+);
+
+-- Test 21: Invited user cannot alter invitation token_hash
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub": "33333333-3333-3333-3333-333333333333", "role": "authenticated", "email": "member-a@ytufit.local"}';
+UPDATE public.gym_invitations
+SET token_hash = 'tampered'
+WHERE id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02';
+SET LOCAL ROLE postgres;
+SELECT is(
+  (SELECT token_hash FROM public.gym_invitations WHERE id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02'),
+  'deterministic-token-hash',
+  'Invited user cannot alter invitation token_hash'
+);
+
+-- Test 22: Client cannot transition PENDING to an arbitrary state
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub": "33333333-3333-3333-3333-333333333333", "role": "authenticated"}';
+SELECT throws_ok(
+  $$ UPDATE public.gym_join_requests
+     SET status = 'REJECTED'
+     WHERE gym_id = '00000000-0000-0000-0000-000000000001'
+       AND user_id = '33333333-3333-3333-3333-333333333333'
+       AND status = 'PENDING' $$,
+  NULL, NULL, 'Client cannot transition PENDING to an arbitrary state'
+);
+SET LOCAL ROLE postgres;
+SELECT is(
+  (SELECT status FROM public.gym_join_requests WHERE user_id = '33333333-3333-3333-3333-333333333333' AND status = 'PENDING'),
+  'PENDING',
+  'Client cannot transition PENDING to an arbitrary state'
 );
 
 SELECT * FROM finish();
