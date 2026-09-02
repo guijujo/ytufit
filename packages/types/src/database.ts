@@ -34,6 +34,82 @@ export type Database = {
   };
   public: {
     Tables: {
+      attendances: {
+        Row: {
+          attendance_date: string;
+          cancellation_reason: string | null;
+          cancelled_at: string | null;
+          cancelled_by: string | null;
+          created_at: string;
+          created_by: string | null;
+          gym_id: string;
+          gym_member_id: string;
+          id: string;
+          membership_id: string | null;
+          method: Database['public']['Enums']['attendance_method'];
+          occurred_at: string;
+          source_reference: string | null;
+          status: Database['public']['Enums']['attendance_status'];
+          updated_at: string;
+        };
+        Insert: {
+          attendance_date: string;
+          cancellation_reason?: string | null;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          gym_id: string;
+          gym_member_id: string;
+          id?: string;
+          membership_id?: string | null;
+          method: Database['public']['Enums']['attendance_method'];
+          occurred_at: string;
+          source_reference?: string | null;
+          status?: Database['public']['Enums']['attendance_status'];
+          updated_at?: string;
+        };
+        Update: {
+          attendance_date?: string;
+          cancellation_reason?: string | null;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          gym_id?: string;
+          gym_member_id?: string;
+          id?: string;
+          membership_id?: string | null;
+          method?: Database['public']['Enums']['attendance_method'];
+          occurred_at?: string;
+          source_reference?: string | null;
+          status?: Database['public']['Enums']['attendance_status'];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'attendances_gym_id_fkey';
+            columns: ['gym_id'];
+            isOneToOne: false;
+            referencedRelation: 'gyms';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'attendances_gym_member_fk';
+            columns: ['gym_member_id', 'gym_id'];
+            isOneToOne: false;
+            referencedRelation: 'gym_members';
+            referencedColumns: ['id', 'gym_id'];
+          },
+          {
+            foreignKeyName: 'attendances_membership_fk';
+            columns: ['membership_id', 'gym_id'];
+            isOneToOne: false;
+            referencedRelation: 'memberships';
+            referencedColumns: ['id', 'gym_id'];
+          },
+        ];
+      };
       gym_invitations: {
         Row: {
           accepted_at: string | null;
@@ -239,6 +315,156 @@ export type Database = {
         };
         Relationships: [];
       };
+      membership_plans: {
+        Row: {
+          access_limit: number | null;
+          access_type: Database['public']['Enums']['membership_access_type'];
+          created_at: string;
+          currency: string;
+          deleted_at: string | null;
+          description: string | null;
+          duration_days: number;
+          frequency_period:
+            Database['public']['Enums']['membership_frequency_period'] | null;
+          gym_id: string;
+          id: string;
+          name: string;
+          price: number;
+          status: Database['public']['Enums']['membership_plan_status'];
+          target: number | null;
+          updated_at: string;
+        };
+        Insert: {
+          access_limit?: number | null;
+          access_type: Database['public']['Enums']['membership_access_type'];
+          created_at?: string;
+          currency?: string;
+          deleted_at?: string | null;
+          description?: string | null;
+          duration_days: number;
+          frequency_period?:
+            Database['public']['Enums']['membership_frequency_period'] | null;
+          gym_id: string;
+          id?: string;
+          name: string;
+          price: number;
+          status?: Database['public']['Enums']['membership_plan_status'];
+          target?: number | null;
+          updated_at?: string;
+        };
+        Update: {
+          access_limit?: number | null;
+          access_type?: Database['public']['Enums']['membership_access_type'];
+          created_at?: string;
+          currency?: string;
+          deleted_at?: string | null;
+          description?: string | null;
+          duration_days?: number;
+          frequency_period?:
+            Database['public']['Enums']['membership_frequency_period'] | null;
+          gym_id?: string;
+          id?: string;
+          name?: string;
+          price?: number;
+          status?: Database['public']['Enums']['membership_plan_status'];
+          target?: number | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'membership_plans_gym_id_fkey';
+            columns: ['gym_id'];
+            isOneToOne: false;
+            referencedRelation: 'gyms';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      memberships: {
+        Row: {
+          access_limit_snapshot: number | null;
+          access_type_snapshot: Database['public']['Enums']['membership_access_type'];
+          cancellation_reason: string | null;
+          cancelled_at: string | null;
+          contracted_price: number;
+          created_at: string;
+          currency: string;
+          ends_at: string;
+          gym_id: string;
+          gym_member_id: string;
+          id: string;
+          membership_plan_id: string;
+          period_snapshot:
+            Database['public']['Enums']['membership_frequency_period'] | null;
+          starts_at: string;
+          status: Database['public']['Enums']['membership_status'];
+          target_snapshot: number | null;
+          updated_at: string;
+        };
+        Insert: {
+          access_limit_snapshot?: number | null;
+          access_type_snapshot: Database['public']['Enums']['membership_access_type'];
+          cancellation_reason?: string | null;
+          cancelled_at?: string | null;
+          contracted_price: number;
+          created_at?: string;
+          currency: string;
+          ends_at: string;
+          gym_id: string;
+          gym_member_id: string;
+          id?: string;
+          membership_plan_id: string;
+          period_snapshot?:
+            Database['public']['Enums']['membership_frequency_period'] | null;
+          starts_at: string;
+          status?: Database['public']['Enums']['membership_status'];
+          target_snapshot?: number | null;
+          updated_at?: string;
+        };
+        Update: {
+          access_limit_snapshot?: number | null;
+          access_type_snapshot?: Database['public']['Enums']['membership_access_type'];
+          cancellation_reason?: string | null;
+          cancelled_at?: string | null;
+          contracted_price?: number;
+          created_at?: string;
+          currency?: string;
+          ends_at?: string;
+          gym_id?: string;
+          gym_member_id?: string;
+          id?: string;
+          membership_plan_id?: string;
+          period_snapshot?:
+            Database['public']['Enums']['membership_frequency_period'] | null;
+          starts_at?: string;
+          status?: Database['public']['Enums']['membership_status'];
+          target_snapshot?: number | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'memberships_gym_id_fkey';
+            columns: ['gym_id'];
+            isOneToOne: false;
+            referencedRelation: 'gyms';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'memberships_gym_member_fk';
+            columns: ['gym_member_id', 'gym_id'];
+            isOneToOne: false;
+            referencedRelation: 'gym_members';
+            referencedColumns: ['id', 'gym_id'];
+          },
+          {
+            foreignKeyName: 'memberships_plan_fk';
+            columns: ['membership_plan_id', 'gym_id'];
+            isOneToOne: false;
+            referencedRelation: 'membership_plans';
+            referencedColumns: ['id', 'gym_id'];
+          },
+        ];
+      };
       platform_admins: {
         Row: {
           created_at: string;
@@ -316,10 +542,178 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      archive_membership_plan: {
+        Args: { p_plan_id: string };
+        Returns: string;
+      };
+      archiveMembershipPlan: {
+        Args: { p_plan_id: string };
+        Returns: string;
+      };
+      cancel_attendance: {
+        Args: { p_attendance_id: string; p_reason: string };
+        Returns: string;
+      };
+      cancel_membership: {
+        Args: { p_membership_id: string; p_reason: string };
+        Returns: string;
+      };
+      cancelAttendance: {
+        Args: { p_attendance_id: string; p_reason: string };
+        Returns: string;
+      };
+      cancelMembership: {
+        Args: { p_membership_id: string; p_reason: string };
+        Returns: string;
+      };
+      change_membership_plan: {
+        Args: {
+          p_membership_id: string;
+          p_new_plan_id: string;
+          p_reason?: string;
+          p_starts_at?: string;
+        };
+        Returns: string;
+      };
+      changeMembershipPlan: {
+        Args: {
+          p_membership_id: string;
+          p_new_plan_id: string;
+          p_reason?: string;
+          p_starts_at?: string;
+        };
+        Returns: string;
+      };
+      create_membership: {
+        Args: {
+          p_gym_member_id: string;
+          p_membership_plan_id: string;
+          p_starts_at?: string;
+        };
+        Returns: string;
+      };
+      create_membership_plan: {
+        Args: {
+          p_access_limit: number;
+          p_access_type: Database['public']['Enums']['membership_access_type'];
+          p_currency: string;
+          p_description: string;
+          p_duration_days: number;
+          p_frequency_period: Database['public']['Enums']['membership_frequency_period'];
+          p_gym_id: string;
+          p_name: string;
+          p_price: number;
+          p_target: number;
+        };
+        Returns: string;
+      };
+      createMembership: {
+        Args: {
+          p_gym_member_id: string;
+          p_membership_plan_id: string;
+          p_starts_at?: string;
+        };
+        Returns: string;
+      };
+      createMembershipPlan: {
+        Args: {
+          p_access_limit: number;
+          p_access_type: Database['public']['Enums']['membership_access_type'];
+          p_currency: string;
+          p_description: string;
+          p_duration_days: number;
+          p_frequency_period: Database['public']['Enums']['membership_frequency_period'];
+          p_gym_id: string;
+          p_name: string;
+          p_price: number;
+          p_target: number;
+        };
+        Returns: string;
+      };
+      register_attendance: {
+        Args: {
+          p_gym_member_id: string;
+          p_membership_id?: string;
+          p_method: Database['public']['Enums']['attendance_method'];
+          p_occurred_at: string;
+          p_source_reference?: string;
+        };
+        Returns: string;
+      };
+      registerAttendance: {
+        Args: {
+          p_gym_member_id: string;
+          p_membership_id?: string;
+          p_method: Database['public']['Enums']['attendance_method'];
+          p_occurred_at: string;
+          p_source_reference?: string;
+        };
+        Returns: string;
+      };
+      renew_membership: {
+        Args: { p_membership_id: string; p_starts_at?: string };
+        Returns: string;
+      };
+      renewMembership: {
+        Args: { p_membership_id: string; p_starts_at?: string };
+        Returns: string;
+      };
+      resume_membership: {
+        Args: { p_membership_id: string };
+        Returns: string;
+      };
+      resumeMembership: {
+        Args: { p_membership_id: string };
+        Returns: string;
+      };
+      suspend_membership: {
+        Args: { p_membership_id: string };
+        Returns: string;
+      };
+      suspendMembership: {
+        Args: { p_membership_id: string };
+        Returns: string;
+      };
+      update_membership_plan: {
+        Args: {
+          p_access_limit: number;
+          p_access_type: Database['public']['Enums']['membership_access_type'];
+          p_currency: string;
+          p_description: string;
+          p_duration_days: number;
+          p_frequency_period: Database['public']['Enums']['membership_frequency_period'];
+          p_name: string;
+          p_plan_id: string;
+          p_price: number;
+          p_target: number;
+        };
+        Returns: string;
+      };
+      updateMembershipPlan: {
+        Args: {
+          p_access_limit: number;
+          p_access_type: Database['public']['Enums']['membership_access_type'];
+          p_currency: string;
+          p_description: string;
+          p_duration_days: number;
+          p_frequency_period: Database['public']['Enums']['membership_frequency_period'];
+          p_name: string;
+          p_plan_id: string;
+          p_price: number;
+          p_target: number;
+        };
+        Returns: string;
+      };
     };
     Enums: {
-      [_ in never]: never;
+      attendance_method:
+        'MANUAL' | 'QR' | 'WORKOUT_COMPLETED' | 'WORKOUT_STARTED';
+      attendance_status: 'CANCELLED' | 'VALID';
+      membership_access_type:
+        'ACCESS_COUNT' | 'MONTHLY_LIMIT' | 'UNLIMITED' | 'WEEKLY_FREQUENCY';
+      membership_frequency_period: 'MONTH' | 'WEEK';
+      membership_plan_status: 'ACTIVE' | 'INACTIVE';
+      membership_status: 'ACTIVE' | 'CANCELLED' | 'EXPIRED' | 'SUSPENDED';
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -449,6 +843,23 @@ export const Constants = {
     Enums: {},
   },
   public: {
-    Enums: {},
+    Enums: {
+      attendance_method: [
+        'MANUAL',
+        'QR',
+        'WORKOUT_COMPLETED',
+        'WORKOUT_STARTED',
+      ],
+      attendance_status: ['CANCELLED', 'VALID'],
+      membership_access_type: [
+        'ACCESS_COUNT',
+        'MONTHLY_LIMIT',
+        'UNLIMITED',
+        'WEEKLY_FREQUENCY',
+      ],
+      membership_frequency_period: ['MONTH', 'WEEK'],
+      membership_plan_status: ['ACTIVE', 'INACTIVE'],
+      membership_status: ['ACTIVE', 'CANCELLED', 'EXPIRED', 'SUSPENDED'],
+    },
   },
 } as const;
