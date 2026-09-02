@@ -35,3 +35,13 @@ asistencias son históricas: cambiar de plan cierra el contrato anterior y
 cancelar una asistencia conserva la fila. Los límites semanal, mensual y de
 accesos se derivan de eventos `VALID`; la restricción diaria es la defensa
 definitiva frente a carreras concurrentes.
+
+En v2.0.2, `registerAttendance` es exclusivamente administrativo: el actor
+debe ser `GYM_ADMIN` del mismo gimnasio y el único método público habilitado es
+`MANUAL`. `QR`, `WORKOUT_STARTED` y `WORKOUT_COMPLETED` permanecen modelados
+para futuras superficies server-side, pero no pueden ser falsificados por un
+miembro. Para registros manuales históricos, la membresía se valida contra
+`occurred_at`, mientras `attendance_date` siempre se calcula en la zona local.
+Una membership `ACTIVE` cuyo `ends_at` ya pasó se normaliza a `EXPIRED` durante
+los comandos de creación/renovación; una membership suspendida vencida no se
+reanuda y debe renovarse.

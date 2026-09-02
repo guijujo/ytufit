@@ -1,7 +1,7 @@
 -- pgTAP tests for YtuFit v2.0.2 membership and attendance boundaries.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap;
-SELECT plan(34);
+SELECT plan(41);
 
 SET LOCAL ROLE authenticated;
 SET LOCAL "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated","email":"admin-a@ytufit.local"}';
@@ -27,6 +27,15 @@ SET LOCAL ROLE authenticated;
 SET LOCAL "request.jwt.claims" = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated","email":"trainer-a@ytufit.local"}';
 SELECT throws_ok($$ SELECT public.create_membership_plan('00000000-0000-0000-0000-000000000001', 'Trainer plan', NULL, 'UNLIMITED', NULL, NULL, NULL, 1, 'ARS', 30) $$, '42501', NULL, 'Trainer cannot manage plans');
 SELECT throws_ok($$ SELECT public.register_attendance('cccccccc-cccc-cccc-cccc-cccccccccccc', now(), 'QR', '30000000-0000-0000-0000-000000000001', 'trainer') $$, '42501', NULL, 'Trainer has no attendance administration privilege');
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}';
+SELECT throws_ok($$ SELECT public.register_attendance('cccccccc-cccc-cccc-cccc-cccccccccccc', now(), 'MANUAL', NULL, 'member') $$, '42501', NULL, 'Member cannot self-register manual attendance');
+SELECT throws_ok($$ SELECT public.register_attendance('cccccccc-cccc-cccc-cccc-cccccccccccc', now(), 'QR', NULL, 'member') $$, '42501', NULL, 'Member cannot forge QR attendance');
+SELECT throws_ok($$ SELECT public.register_attendance('cccccccc-cccc-cccc-cccc-cccccccccccc', now(), 'WORKOUT_STARTED', NULL, 'member') $$, '42501', NULL, 'Member cannot forge workout-start attendance');
+SELECT throws_ok($$ SELECT public.register_attendance('cccccccc-cccc-cccc-cccc-cccccccccccc', now(), 'WORKOUT_COMPLETED', NULL, 'member') $$, '42501', NULL, 'Member cannot forge workout-completion attendance');
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+SELECT throws_ok($$ SELECT public.register_attendance('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', now(), 'MANUAL', NULL, 'cross-tenant') $$, '42501', NULL, 'Gym A admin cannot register attendance for Gym B');
 
 SET LOCAL ROLE postgres;
 RESET "request.jwt.claims";
@@ -39,7 +48,7 @@ SET LOCAL "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111",
 SELECT public.cancel_attendance('40000000-0000-0000-0000-000000000001', 'Correction') IS NOT NULL;
 SELECT results_eq($$ SELECT status FROM public.attendances WHERE id = '40000000-0000-0000-0000-000000000001' $$, $$ VALUES ('CANCELLED'::public.attendance_status) $$, 'Cancelling attendance preserves history');
 SELECT public.register_attendance('cccccccc-cccc-cccc-cccc-cccccccccccc', '2026-08-04 19:00:00+00', 'MANUAL', '30000000-0000-0000-0000-000000000001', 'replacement') IS NOT NULL;
-SELECT throws_ok($$ SELECT public.register_attendance('cccccccc-cccc-cccc-cccc-cccccccccccc', '2026-08-04 20:00:00+00', 'QR', '30000000-0000-0000-0000-000000000001', 'duplicate') $$, '23505', NULL, 'Only one valid attendance per local day');
+SELECT throws_ok($$ SELECT public.register_attendance('cccccccc-cccc-cccc-cccc-cccccccccccc', '2026-08-04 20:00:00+00', 'MANUAL', '30000000-0000-0000-0000-000000000001', 'duplicate') $$, '23505', NULL, 'Only one valid attendance per local day');
 SELECT results_eq($$ SELECT attendance_date FROM public.attendances WHERE source_reference = 'replacement' $$, $$ VALUES ('2026-08-04'::date) $$, 'Attendance date is derived from gym timezone');
 
 SET LOCAL ROLE authenticated;
@@ -56,6 +65,25 @@ SELECT results_eq($$ SELECT status FROM public.memberships WHERE id = '30000000-
 SELECT results_eq($$ SELECT count(*)::integer FROM public.memberships WHERE gym_member_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc' $$, $$ VALUES (2) $$, 'Changing plan preserves membership history');
 SELECT results_eq($$ SELECT count(*)::integer FROM public.memberships WHERE gym_member_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc' AND status = 'ACTIVE' $$, $$ VALUES (1) $$, 'Changing plan leaves one active membership');
 SELECT results_eq($$ SELECT access_type_snapshot FROM public.memberships WHERE gym_member_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc' AND status = 'ACTIVE' $$, $$ VALUES ('MONTHLY_LIMIT'::public.membership_access_type) $$, 'New membership stores the new plan snapshot');
+SET LOCAL ROLE postgres;
+RESET "request.jwt.claims";
+INSERT INTO public.memberships (
+  id, gym_id, gym_member_id, membership_plan_id, status, starts_at, ends_at,
+  contracted_price, currency, access_type_snapshot
+) VALUES (
+  '30000000-0000-0000-0000-000000000003',
+  '00000000-0000-0000-0000-000000000001',
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  '10000000-0000-0000-0000-000000000003',
+  'ACTIVE', now() - interval '30 days', now() - interval '1 day',
+  45000, 'ARS', 'UNLIMITED'
+);
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+SELECT public.renew_membership('30000000-0000-0000-0000-000000000003') IS NOT NULL;
+SELECT results_eq($$ SELECT status FROM public.memberships WHERE id = '30000000-0000-0000-0000-000000000003' $$, $$ VALUES ('EXPIRED'::public.membership_status) $$, 'Expired active membership is normalized before renewal');
+SELECT results_eq($$ SELECT count(*)::integer FROM public.memberships WHERE gym_member_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' AND status = 'ACTIVE' $$, $$ VALUES (1) $$, 'Renewal leaves one active membership');
+SELECT throws_ok($$ SELECT public.register_attendance('cccccccc-cccc-cccc-cccc-cccccccccccc', now(), 'MANUAL', NULL, 'member') $$, '42501', NULL, 'Member remains unable to register after renewal');
 SET LOCAL ROLE anon;
 RESET "request.jwt.claims";
 SELECT is_empty($$ SELECT * FROM public.memberships $$, 'Anonymous cannot read memberships');

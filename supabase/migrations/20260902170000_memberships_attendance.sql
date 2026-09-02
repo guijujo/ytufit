@@ -353,6 +353,7 @@ SET search_path = pg_catalog, public
 AS $$
 DECLARE
   v_actor UUID; v_gym_id UUID; v_start TIMESTAMPTZ; v_id UUID;
+  v_existing public.memberships%ROWTYPE;
   v_plan public.membership_plans%ROWTYPE;
 BEGIN
   SELECT gym_id INTO v_gym_id FROM public.gym_members WHERE id = p_gym_member_id FOR UPDATE;
@@ -362,9 +363,19 @@ BEGIN
     WHERE id = p_membership_plan_id AND gym_id = v_gym_id
       AND status = 'ACTIVE' AND deleted_at IS NULL FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Membership plan does not belong to this gym or is inactive' USING ERRCODE = '23503'; END IF;
-  IF EXISTS (SELECT 1 FROM public.memberships WHERE gym_member_id = p_gym_member_id AND gym_id = v_gym_id AND status = 'ACTIVE') THEN
-    RAISE EXCEPTION 'Gym member already has an active membership' USING ERRCODE = '23505';
-  END IF;
+  FOR v_existing IN
+    SELECT * FROM public.memberships
+    WHERE gym_member_id = p_gym_member_id AND gym_id = v_gym_id AND status = 'ACTIVE'
+    FOR UPDATE
+  LOOP
+    IF v_existing.ends_at <= clock_timestamp() THEN
+      PERFORM set_config('ytufit.command', 'membership', true);
+      UPDATE public.memberships SET status = 'EXPIRED' WHERE id = v_existing.id;
+      PERFORM set_config('ytufit.command', '', true);
+    ELSE
+      RAISE EXCEPTION 'Gym member already has an active membership' USING ERRCODE = '23505';
+    END IF;
+  END LOOP;
   v_start := COALESCE(p_starts_at, clock_timestamp());
   INSERT INTO public.memberships (
     gym_id, gym_member_id, membership_plan_id, starts_at, ends_at,
@@ -392,7 +403,17 @@ BEGIN
   SELECT * INTO v_old FROM public.memberships WHERE id = p_membership_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Membership not found' USING ERRCODE = 'P0002'; END IF;
   PERFORM private.assert_gym_admin(v_old.gym_id);
-  IF v_old.status = 'ACTIVE' THEN RAISE EXCEPTION 'Active membership cannot be renewed' USING ERRCODE = '55000'; END IF;
+  IF v_old.status = 'ACTIVE' AND v_old.ends_at > clock_timestamp() THEN
+    RAISE EXCEPTION 'Active membership cannot be renewed' USING ERRCODE = '55000';
+  ELSIF v_old.status = 'ACTIVE' THEN
+    PERFORM set_config('ytufit.command', 'membership', true);
+    UPDATE public.memberships SET status = 'EXPIRED' WHERE id = v_old.id;
+    PERFORM set_config('ytufit.command', '', true);
+  END IF;
+  IF v_old.status NOT IN ('EXPIRED', 'ACTIVE') OR
+     (v_old.status = 'ACTIVE' AND v_old.ends_at > clock_timestamp()) THEN
+    RAISE EXCEPTION 'Only expired memberships can be renewed' USING ERRCODE = '55000';
+  END IF;
   SELECT * INTO v_plan FROM public.membership_plans
     WHERE id = v_old.membership_plan_id AND gym_id = v_old.gym_id
       AND status = 'ACTIVE' AND deleted_at IS NULL FOR UPDATE;
@@ -473,9 +494,19 @@ SET search_path = pg_catalog, public
 AS $$
 DECLARE v_gym_id UUID; v_id UUID;
 BEGIN
-  SELECT gym_id INTO v_gym_id FROM public.memberships WHERE id = p_membership_id AND status = 'SUSPENDED' FOR UPDATE;
+  SELECT gym_id INTO v_gym_id FROM public.memberships
+    WHERE id = p_membership_id AND status = 'SUSPENDED' FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Only a suspended membership can be resumed' USING ERRCODE = '55000'; END IF;
   PERFORM private.assert_gym_admin(v_gym_id);
+  IF EXISTS (
+    SELECT 1 FROM public.memberships
+    WHERE id = p_membership_id AND ends_at <= clock_timestamp()
+  ) THEN
+    PERFORM set_config('ytufit.command', 'membership', true);
+    UPDATE public.memberships SET status = 'EXPIRED' WHERE id = p_membership_id;
+    PERFORM set_config('ytufit.command', '', true);
+    RAISE EXCEPTION 'Suspended membership has expired and must be renewed' USING ERRCODE = '55000';
+  END IF;
   PERFORM set_config('ytufit.command', 'membership', true);
   UPDATE public.memberships SET status = 'ACTIVE' WHERE id = p_membership_id RETURNING id INTO v_id;
   PERFORM set_config('ytufit.command', '', true);
@@ -515,10 +546,13 @@ DECLARE
   v_count INTEGER; v_week_start DATE; v_month_start DATE;
 BEGIN
   IF v_actor IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE = '42501'; END IF;
+  IF p_method <> 'MANUAL' THEN
+    RAISE EXCEPTION 'Only MANUAL attendance is enabled in v2.0.2' USING ERRCODE = '42501';
+  END IF;
   SELECT gm.gym_id, g.timezone INTO v_gym_id, v_timezone
     FROM public.gym_members gm JOIN public.gyms g ON g.id = gm.gym_id
     WHERE gm.id = p_gym_member_id AND gm.status = 'ACTIVE'
-      AND (gm.user_id = v_actor OR private.has_gym_role(gm.gym_id, 'GYM_ADMIN'))
+      AND private.has_gym_role(gm.gym_id, 'GYM_ADMIN')
     FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Active gym member or authorization not found' USING ERRCODE = '42501'; END IF;
   IF p_occurred_at IS NULL THEN RAISE EXCEPTION 'occurred_at is required' USING ERRCODE = '22023'; END IF;
@@ -526,15 +560,16 @@ BEGIN
   IF p_membership_id IS NULL THEN
     SELECT * INTO v_membership FROM public.memberships
       WHERE gym_member_id = p_gym_member_id AND gym_id = v_gym_id
-        AND status = 'ACTIVE' AND starts_at <= clock_timestamp() AND ends_at > clock_timestamp()
+        AND status IN ('ACTIVE', 'EXPIRED')
+        AND starts_at <= p_occurred_at AND ends_at > p_occurred_at
       ORDER BY starts_at DESC LIMIT 1 FOR UPDATE;
   ELSE
     SELECT * INTO v_membership FROM public.memberships
       WHERE id = p_membership_id AND gym_member_id = p_gym_member_id
         AND gym_id = v_gym_id FOR UPDATE;
-    IF FOUND AND (v_membership.status <> 'ACTIVE'
-      OR v_membership.starts_at > clock_timestamp() OR v_membership.ends_at <= clock_timestamp()) THEN
-      RAISE EXCEPTION 'Membership is not active and current' USING ERRCODE = '55000';
+    IF FOUND AND (v_membership.status NOT IN ('ACTIVE', 'EXPIRED')
+      OR v_membership.starts_at > p_occurred_at OR v_membership.ends_at <= p_occurred_at) THEN
+      RAISE EXCEPTION 'Membership was not valid at occurred_at' USING ERRCODE = '55000';
     END IF;
   END IF;
   IF NOT FOUND THEN RAISE EXCEPTION 'An active and current membership is required' USING ERRCODE = '55000'; END IF;

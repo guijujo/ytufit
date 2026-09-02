@@ -18,6 +18,13 @@ Los límites comerciales se calculan desde el historial válido de la
 membresía (semana ISO iniciada en lunes y mes calendario local), sin un
 contador mutable como fuente de verdad.
 
+`registerAttendance` queda limitado a `GYM_ADMIN` del tenant y al método
+`MANUAL` mientras no existan QR verificable ni eventos de Training. Los métodos
+futuros conservan sus enums, pero no son invocables libremente por miembros.
+Los comandos normalizan memberships `ACTIVE` vencidas a `EXPIRED` antes de
+crear o renovar contratos; las memberships suspendidas vencidas no se
+reanuda y deben renovarse.
+
 ## Consecuencias
 
 Los comandos server-side son la única superficie de escritura para estas

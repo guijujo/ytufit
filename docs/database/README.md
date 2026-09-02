@@ -39,5 +39,12 @@ gimnasio. No hay mutaciones directas para clientes. Los comandos
 `suspendMembership`, `resumeMembership`, `cancelMembership`, `registerAttendance`
 y `cancelAttendance` son funciones `SECURITY DEFINER`, autentican el actor y
 derivan tenant, precio, snapshots y campos de auditoría en el servidor.
-Los límites se calculan desde asistencias `VALID`; una violación del índice
-diario por concurrencia se devuelve como `23505`.
+Los límites se calculan desde asistencias `VALID`: la frecuencia semanal usa
+la semana calendario PostgreSQL/ISO iniciada el lunes, la mensual usa el mes
+calendario local y `ACCESS_COUNT` usa el total histórico de la membresía.
+`UNLIMITED` no tiene límite comercial, pero mantiene una asistencia válida por
+día. Una violación del índice diario por concurrencia se devuelve como `23505`.
+En esta fase `registerAttendance` solo acepta `MANUAL` y requiere un
+`GYM_ADMIN`; los métodos QR/workout quedan reservados para comandos futuros.
+La validez de una asistencia histórica se comprueba contra su `occurred_at`,
+no contra la hora actual.
