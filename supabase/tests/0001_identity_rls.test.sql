@@ -6,7 +6,7 @@ BEGIN;
 -- 1. Install pgTAP if not present and declare plan
 CREATE EXTENSION IF NOT EXISTS pgtap;
 
-SELECT plan(25);
+SELECT plan(26);
 
 -- Test 1: Member A can read their own profile
 SET LOCAL ROLE authenticated;
@@ -200,11 +200,14 @@ SELECT is(
 -- Test 15: Member cannot approve their own request
 SET LOCAL ROLE authenticated;
 SET LOCAL "request.jwt.claims" = '{"sub": "33333333-3333-3333-3333-333333333333", "role": "authenticated"}';
-UPDATE public.gym_join_requests
-SET status = 'APPROVED'
-WHERE gym_id = '00000000-0000-0000-0000-000000000001'
-  AND user_id = '33333333-3333-3333-3333-333333333333'
-  AND status = 'PENDING';
+SELECT throws_ok(
+  $$ UPDATE public.gym_join_requests
+     SET status = 'APPROVED'
+     WHERE gym_id = '00000000-0000-0000-0000-000000000001'
+       AND user_id = '33333333-3333-3333-3333-333333333333'
+       AND status = 'PENDING' $$,
+  NULL, NULL, 'Member cannot approve their own join request'
+);
 SET LOCAL ROLE postgres;
 SELECT is(
   (SELECT status FROM public.gym_join_requests WHERE user_id = '33333333-3333-3333-3333-333333333333' AND status = 'PENDING'),
