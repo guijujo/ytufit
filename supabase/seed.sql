@@ -1,0 +1,1 @@
+-- Intentionally empty. Add deterministic, non-secret local fixtures alongside the first schema migration.
