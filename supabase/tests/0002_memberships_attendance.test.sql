@@ -1,7 +1,7 @@
 -- pgTAP tests for YtuFit v2.0.2 membership and attendance boundaries.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap;
-SELECT plan(40);
+SELECT plan(38);
 
 SET LOCAL ROLE authenticated;
 SET LOCAL "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated","email":"admin-a@ytufit.local"}';
