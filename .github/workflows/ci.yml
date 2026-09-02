@@ -25,3 +25,27 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm build
+
+  supabase:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Start Supabase Local Stack
+        run: supabase start
+      - name: Run Supabase DB RLS and Security Tests
+        run: supabase test db
+      - name: Verify Generated TypeScript Types Match Database Schema
+        run: |
+          supabase gen types typescript --local > packages/types/src/database.ts
+          pnpm format
+          git diff --exit-code packages/types/src/database.ts
