@@ -6,7 +6,7 @@ BEGIN;
 -- 1. Install pgTAP if not present and declare plan
 CREATE EXTENSION IF NOT EXISTS pgtap;
 
-SELECT plan(24);
+SELECT plan(29);
 
 -- Test 1: Member A can read their own profile
 SET LOCAL ROLE authenticated;
@@ -170,11 +170,14 @@ SELECT results_eq(
 -- Test 13: Admin A cannot change join request ownership fields
 SET LOCAL ROLE authenticated;
 SET LOCAL "request.jwt.claims" = '{"sub": "11111111-1111-1111-1111-111111111111", "role": "authenticated"}';
-UPDATE public.gym_join_requests
-SET user_id = '55555555-5555-5555-5555-555555555555'
-WHERE gym_id = '00000000-0000-0000-0000-000000000001'
-  AND user_id = '33333333-3333-3333-3333-333333333333'
-  AND status = 'PENDING';
+SELECT throws_ok(
+  $$ UPDATE public.gym_join_requests
+     SET user_id = '55555555-5555-5555-5555-555555555555'
+     WHERE gym_id = '00000000-0000-0000-0000-000000000001'
+       AND user_id = '33333333-3333-3333-3333-333333333333'
+       AND status = 'PENDING' $$,
+  NULL, NULL, 'Admin A cannot change join request user_id'
+);
 SET LOCAL ROLE postgres;
 SELECT results_eq(
   $$ SELECT user_id FROM public.gym_join_requests WHERE gym_id = '00000000-0000-0000-0000-000000000001' AND user_id = '33333333-3333-3333-3333-333333333333' AND status = 'PENDING' $$,
@@ -185,11 +188,14 @@ SELECT results_eq(
 -- Test 14: Admin A cannot change a join request gym_id
 SET LOCAL ROLE authenticated;
 SET LOCAL "request.jwt.claims" = '{"sub": "11111111-1111-1111-1111-111111111111", "role": "authenticated"}';
-UPDATE public.gym_join_requests
-SET gym_id = '00000000-0000-0000-0000-000000000002'
-WHERE gym_id = '00000000-0000-0000-0000-000000000001'
-  AND user_id = '33333333-3333-3333-3333-333333333333'
-  AND status = 'PENDING';
+SELECT throws_ok(
+  $$ UPDATE public.gym_join_requests
+     SET gym_id = '00000000-0000-0000-0000-000000000002'
+     WHERE gym_id = '00000000-0000-0000-0000-000000000001'
+       AND user_id = '33333333-3333-3333-3333-333333333333'
+       AND status = 'PENDING' $$,
+  NULL, NULL, 'Admin A cannot change join request gym_id'
+);
 SET LOCAL ROLE postgres;
 SELECT is(
   (SELECT gym_id::text FROM public.gym_join_requests WHERE user_id = '33333333-3333-3333-3333-333333333333' AND status = 'PENDING'),
@@ -257,9 +263,12 @@ SELECT throws_ok(
 -- Test 20: Invited user cannot alter invitation role_id
 SET LOCAL ROLE authenticated;
 SET LOCAL "request.jwt.claims" = '{"sub": "33333333-3333-3333-3333-333333333333", "role": "authenticated", "email": "member-a@ytufit.local"}';
-UPDATE public.gym_invitations
-SET role_id = (SELECT id FROM public.roles WHERE name = 'GYM_ADMIN')
-WHERE id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02';
+SELECT throws_ok(
+  $$ UPDATE public.gym_invitations
+     SET role_id = (SELECT id FROM public.roles WHERE name = 'GYM_ADMIN')
+     WHERE id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02' $$,
+  NULL, NULL, 'Invited user cannot alter invitation role_id'
+);
 SET LOCAL ROLE postgres;
 SELECT is(
   (SELECT r.name FROM public.gym_invitations i JOIN public.roles r ON r.id = i.role_id WHERE i.id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02'),
@@ -270,9 +279,12 @@ SELECT is(
 -- Test 21: Invited user cannot alter invitation token_hash
 SET LOCAL ROLE authenticated;
 SET LOCAL "request.jwt.claims" = '{"sub": "33333333-3333-3333-3333-333333333333", "role": "authenticated", "email": "member-a@ytufit.local"}';
-UPDATE public.gym_invitations
-SET token_hash = 'tampered'
-WHERE id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02';
+SELECT throws_ok(
+  $$ UPDATE public.gym_invitations
+     SET token_hash = 'tampered'
+     WHERE id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02' $$,
+  NULL, NULL, 'Invited user cannot alter invitation token_hash'
+);
 SET LOCAL ROLE postgres;
 SELECT is(
   (SELECT token_hash FROM public.gym_invitations WHERE id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02'),
@@ -283,11 +295,14 @@ SELECT is(
 -- Test 22: Client cannot transition PENDING to an arbitrary state
 SET LOCAL ROLE authenticated;
 SET LOCAL "request.jwt.claims" = '{"sub": "33333333-3333-3333-3333-333333333333", "role": "authenticated"}';
-UPDATE public.gym_join_requests
-SET status = 'REJECTED'
-WHERE gym_id = '00000000-0000-0000-0000-000000000001'
-  AND user_id = '33333333-3333-3333-3333-333333333333'
-  AND status = 'PENDING';
+SELECT throws_ok(
+  $$ UPDATE public.gym_join_requests
+     SET status = 'REJECTED'
+     WHERE gym_id = '00000000-0000-0000-0000-000000000001'
+       AND user_id = '33333333-3333-3333-3333-333333333333'
+       AND status = 'PENDING' $$,
+  NULL, NULL, 'Client cannot transition PENDING to an arbitrary state'
+);
 SET LOCAL ROLE postgres;
 SELECT is(
   (SELECT status FROM public.gym_join_requests WHERE user_id = '33333333-3333-3333-3333-333333333333' AND status = 'PENDING'),
