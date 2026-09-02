@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "YtuFit",
+    "slug": "ytufit",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "scheme": "ytufit",
+    "userInterfaceStyle": "automatic",
+    "plugins": ["expo-router"],
+    "experiments": { "typedRoutes": true },
+    "ios": { "supportsTablet": true, "bundleIdentifier": "com.ytufit.mobile" },
+    "android": { "package": "com.ytufit.mobile" },
+    "web": { "bundler": "metro" }
+  }
+}

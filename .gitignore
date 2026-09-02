@@ -1,0 +1,14 @@
+node_modules/
+.turbo/
+.next/
+dist/
+coverage/
+.expo/
+web-build/
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+!.env.example
+apps/mobile/.env
+apps/web/.env.local
