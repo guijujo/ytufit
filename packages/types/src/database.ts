@@ -648,8 +648,8 @@ export type Database = {
         Args: {
           p_membership_id: string;
           p_new_plan_id: string;
-          p_starts_at?: string;
           p_reason?: string;
+          p_starts_at?: string;
         };
         Returns: string;
       };
@@ -663,26 +663,26 @@ export type Database = {
       };
       createMembershipPlan: {
         Args: {
-          p_gym_id: string;
-          p_name: string;
-          p_description: string | null;
-          p_access_type: Database['public']['Enums']['membership_access_type'];
           p_access_limit: number | null;
+          p_access_type: Database['public']['Enums']['membership_access_type'];
+          p_currency: string;
+          p_description: string | null;
+          p_duration_days: number;
           p_frequency_period:
             Database['public']['Enums']['membership_frequency_period'] | null;
-          p_target: number | null;
+          p_gym_id: string;
+          p_name: string;
           p_price: number;
-          p_currency: string;
-          p_duration_days: number;
+          p_target: number | null;
         };
         Returns: string;
       };
       registerAttendance: {
         Args: {
           p_gym_member_id: string;
-          p_occurred_at: string;
-          p_method: Database['public']['Enums']['attendance_method'];
           p_membership_id?: string;
+          p_method: Database['public']['Enums']['attendance_method'];
+          p_occurred_at: string;
           p_source_reference?: string;
         };
         Returns: string;
@@ -695,17 +695,17 @@ export type Database = {
       suspendMembership: { Args: { p_membership_id: string }; Returns: string };
       updateMembershipPlan: {
         Args: {
-          p_plan_id: string;
-          p_name: string;
-          p_description: string | null;
-          p_access_type: Database['public']['Enums']['membership_access_type'];
           p_access_limit: number | null;
+          p_access_type: Database['public']['Enums']['membership_access_type'];
+          p_currency: string;
+          p_description: string | null;
+          p_duration_days: number;
           p_frequency_period:
             Database['public']['Enums']['membership_frequency_period'] | null;
-          p_target: number | null;
+          p_name: string;
+          p_plan_id: string;
           p_price: number;
-          p_currency: string;
-          p_duration_days: number;
+          p_target: number | null;
         };
         Returns: string;
       };
@@ -850,21 +850,21 @@ export const Constants = {
   public: {
     Enums: {
       attendance_method: [
-        'QR',
-        'WORKOUT_STARTED',
-        'WORKOUT_COMPLETED',
         'MANUAL',
+        'QR',
+        'WORKOUT_COMPLETED',
+        'WORKOUT_STARTED',
       ],
-      attendance_status: ['VALID', 'CANCELLED'],
+      attendance_status: ['CANCELLED', 'VALID'],
       membership_access_type: [
-        'WEEKLY_FREQUENCY',
-        'MONTHLY_LIMIT',
         'ACCESS_COUNT',
+        'MONTHLY_LIMIT',
         'UNLIMITED',
+        'WEEKLY_FREQUENCY',
       ],
-      membership_frequency_period: ['WEEK', 'MONTH'],
+      membership_frequency_period: ['MONTH', 'WEEK'],
       membership_plan_status: ['ACTIVE', 'INACTIVE'],
-      membership_status: ['ACTIVE', 'EXPIRED', 'CANCELLED', 'SUSPENDED'],
+      membership_status: ['ACTIVE', 'CANCELLED', 'EXPIRED', 'SUSPENDED'],
     },
   },
 } as const;
