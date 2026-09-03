@@ -13,3 +13,5 @@ web-build/
 apps/mobile/.env
 apps/web/.env.local
 supabase/.temp/
+
+supabase/.branches/
