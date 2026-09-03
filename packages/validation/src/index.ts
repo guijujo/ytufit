@@ -12,6 +12,7 @@ export const exerciseTrackingTypeSchema = z.enum([
 ]);
 
 export const exerciseStatusSchema = z.enum(['ACTIVE', 'INACTIVE']);
+export const muscleInvolvementSchema = z.enum(['PRIMARY', 'SECONDARY']);
 export const exerciseCategorySchema = z.enum([
   'STRENGTH',
   'CARDIO',
@@ -71,6 +72,36 @@ export const archiveGymExerciseSchema = z.object({
   exerciseId: z.uuid(),
 });
 
+export const setExerciseMusclesSchema = z
+  .object({
+    exerciseId: z.uuid(),
+    muscles: z.array(
+      z.object({
+        muscleId: z.uuid(),
+        involvement: muscleInvolvementSchema,
+      }),
+    ),
+  })
+  .refine(
+    (value) =>
+      new Set(value.muscles.map((muscle) => muscle.muscleId)).size ===
+      value.muscles.length,
+    'A muscle can only appear once per exercise',
+  );
+
+export const setExerciseEquipmentSchema = z
+  .object({
+    exerciseId: z.uuid(),
+    equipmentIds: z.array(z.uuid()),
+  })
+  .refine(
+    (value) => new Set(value.equipmentIds).size === value.equipmentIds.length,
+    'Equipment can only appear once per exercise',
+  );
 export type CreateGymExerciseInput = z.infer<typeof createGymExerciseSchema>;
 export type UpdateGymExerciseInput = z.infer<typeof updateGymExerciseSchema>;
 export type ArchiveGymExerciseInput = z.infer<typeof archiveGymExerciseSchema>;
+export type SetExerciseMusclesInput = z.infer<typeof setExerciseMusclesSchema>;
+export type SetExerciseEquipmentInput = z.infer<
+  typeof setExerciseEquipmentSchema
+>;

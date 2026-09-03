@@ -97,7 +97,7 @@ CREATE TABLE public.exercise_muscles (
   muscle_id UUID NOT NULL REFERENCES public.muscles(id) ON DELETE RESTRICT,
   involvement public.muscle_involvement NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
-  PRIMARY KEY (exercise_id, muscle_id, involvement)
+  PRIMARY KEY (exercise_id, muscle_id)
 );
 
 CREATE INDEX idx_exercise_muscles_muscle_id ON public.exercise_muscles(muscle_id);
@@ -392,6 +392,139 @@ BEGIN
 END;
 $$;
 
+
+CREATE OR REPLACE FUNCTION public.set_exercise_muscles(
+  p_exercise_id UUID,
+  p_muscles JSONB
+) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v_exercise public.exercises%ROWTYPE;
+  v_actor UUID := (SELECT auth.uid());
+BEGIN
+  IF v_actor IS NULL THEN
+    RAISE EXCEPTION 'Authentication required' USING ERRCODE = '42501';
+  END IF;
+  IF p_muscles IS NULL OR jsonb_typeof(p_muscles) <> 'array' THEN
+    RAISE EXCEPTION 'muscles must be a JSON array' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT * INTO v_exercise FROM public.exercises WHERE id = p_exercise_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Exercise not found' USING ERRCODE = 'P0002';
+  END IF;
+
+  IF v_exercise.scope = 'GLOBAL' THEN
+    IF NOT private.is_platform_admin() THEN
+      RAISE EXCEPTION 'Platform administration authorization required' USING ERRCODE = '42501';
+    END IF;
+  ELSIF v_exercise.scope = 'GYM' THEN
+    IF NOT private.can_manage_gym_training(v_exercise.gym_id) THEN
+      RAISE EXCEPTION 'Training administration authorization required' USING ERRCODE = '42501';
+    END IF;
+  ELSE
+    RAISE EXCEPTION 'Unsupported exercise scope' USING ERRCODE = '22023';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM jsonb_array_elements(p_muscles) item
+    WHERE jsonb_typeof(item) <> 'object'
+      OR NOT (item ? 'muscle_id')
+      OR NOT (item ? 'involvement')
+      OR item->>'involvement' NOT IN ('PRIMARY', 'SECONDARY')
+  ) THEN
+    RAISE EXCEPTION 'Each muscle must include muscle_id and PRIMARY or SECONDARY involvement' USING ERRCODE = '22023';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM jsonb_array_elements(p_muscles) item
+    GROUP BY item->>'muscle_id'
+    HAVING count(*) > 1
+  ) THEN
+    RAISE EXCEPTION 'A muscle can only appear once per exercise' USING ERRCODE = '23505';
+  END IF;
+
+  IF jsonb_array_length(p_muscles) > 0
+     AND v_exercise.category <> 'CARDIO'
+     AND NOT EXISTS (
+       SELECT 1 FROM jsonb_array_elements(p_muscles) item
+       WHERE item->>'involvement' = 'PRIMARY'
+     ) THEN
+    RAISE EXCEPTION 'At least one PRIMARY muscle is required for non-cardio exercises' USING ERRCODE = '23514';
+  END IF;
+
+  DELETE FROM public.exercise_muscles WHERE exercise_id = p_exercise_id;
+  INSERT INTO public.exercise_muscles (exercise_id, muscle_id, involvement)
+  SELECT
+    p_exercise_id,
+    (item->>'muscle_id')::uuid,
+    (item->>'involvement')::public.muscle_involvement
+  FROM jsonb_array_elements(p_muscles) item;
+
+  RETURN p_exercise_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.set_exercise_equipment(
+  p_exercise_id UUID,
+  p_equipment_ids UUID[]
+) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v_exercise public.exercises%ROWTYPE;
+  v_actor UUID := (SELECT auth.uid());
+BEGIN
+  IF v_actor IS NULL THEN
+    RAISE EXCEPTION 'Authentication required' USING ERRCODE = '42501';
+  END IF;
+  IF p_equipment_ids IS NULL THEN
+    RAISE EXCEPTION 'equipment_ids is required' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT * INTO v_exercise FROM public.exercises WHERE id = p_exercise_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Exercise not found' USING ERRCODE = 'P0002';
+  END IF;
+
+  IF v_exercise.scope = 'GLOBAL' THEN
+    IF NOT private.is_platform_admin() THEN
+      RAISE EXCEPTION 'Platform administration authorization required' USING ERRCODE = '42501';
+    END IF;
+  ELSIF v_exercise.scope = 'GYM' THEN
+    IF NOT private.can_manage_gym_training(v_exercise.gym_id) THEN
+      RAISE EXCEPTION 'Training administration authorization required' USING ERRCODE = '42501';
+    END IF;
+  ELSE
+    RAISE EXCEPTION 'Unsupported exercise scope' USING ERRCODE = '22023';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM unnest(p_equipment_ids) AS equipment_id
+    GROUP BY equipment_id HAVING count(*) > 1
+  ) THEN
+    RAISE EXCEPTION 'Equipment can only appear once per exercise' USING ERRCODE = '23505';
+  END IF;
+
+  DELETE FROM public.exercise_equipment WHERE exercise_id = p_exercise_id;
+  INSERT INTO public.exercise_equipment (exercise_id, equipment_id)
+  SELECT p_exercise_id, equipment_id
+  FROM unnest(p_equipment_ids) AS equipment_id;
+
+  RETURN p_exercise_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public."setExerciseMuscles"(p_exercise_id UUID, p_muscles JSONB)
+RETURNS UUID LANGUAGE sql SECURITY DEFINER SET search_path = pg_catalog, public
+AS $$ SELECT public.set_exercise_muscles($1,$2) $$;
+CREATE OR REPLACE FUNCTION public."setExerciseEquipment"(p_exercise_id UUID, p_equipment_ids UUID[])
+RETURNS UUID LANGUAGE sql SECURITY DEFINER SET search_path = pg_catalog, public
+AS $$ SELECT public.set_exercise_equipment($1,$2) $$;
+
 CREATE OR REPLACE FUNCTION public."createGymExercise"(p_gym_id UUID, p_name TEXT, p_slug TEXT, p_description TEXT, p_instructions TEXT[], p_tracking_type public.exercise_tracking_type, p_category public.exercise_category, p_movement_pattern public.exercise_movement_pattern, p_image_url TEXT DEFAULT NULL, p_animation_url TEXT DEFAULT NULL)
 RETURNS UUID LANGUAGE sql SECURITY DEFINER SET search_path = pg_catalog, public
 AS $$ SELECT public.create_gym_exercise($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) $$;
@@ -418,11 +551,16 @@ BEGIN
       AND p.proname IN (
         'create_gym_exercise', 'update_gym_exercise', 'archive_gym_exercise',
         'create_global_exercise', 'update_global_exercise',
+        'set_exercise_muscles', 'set_exercise_equipment',
         'createGymExercise', 'updateGymExercise', 'archiveGymExercise',
-        'createGlobalExercise', 'updateGlobalExercise'
+        'createGlobalExercise', 'updateGlobalExercise',
+        'setExerciseMuscles', 'setExerciseEquipment'
       )
   LOOP
     EXECUTE format('REVOKE EXECUTE ON FUNCTION %s FROM PUBLIC', f.signature);
     EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO authenticated, service_role', f.signature);
   END LOOP;
 END $$;
+
+
+

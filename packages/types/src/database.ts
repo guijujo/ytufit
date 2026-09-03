@@ -958,6 +958,22 @@ export type Database = {
         Args: { p_membership_id: string };
         Returns: string;
       };
+      set_exercise_equipment: {
+        Args: { p_equipment_ids: string[]; p_exercise_id: string };
+        Returns: string;
+      };
+      set_exercise_muscles: {
+        Args: { p_exercise_id: string; p_muscles: Json };
+        Returns: string;
+      };
+      setExerciseEquipment: {
+        Args: { p_equipment_ids: string[]; p_exercise_id: string };
+        Returns: string;
+      };
+      setExerciseMuscles: {
+        Args: { p_exercise_id: string; p_muscles: Json };
+        Returns: string;
+      };
       suspend_membership: {
         Args: { p_membership_id: string };
         Returns: string;
