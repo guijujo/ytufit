@@ -245,3 +245,50 @@ INSERT INTO public.exercise_equipment (exercise_id, equipment_id) VALUES
   ('55000000-0000-0000-0000-000000000001', '53000000-0000-0000-0000-000000000001'),
   ('55000000-0000-0000-0000-000000000002', '53000000-0000-0000-0000-000000000002')
 ON CONFLICT DO NOTHING;
+
+-- 12. Training routines, prescriptions and assignments
+INSERT INTO public.trainer_member_assignments (
+  id, gym_id, trainer_gym_member_id, member_gym_member_id, created_by
+) VALUES
+  ('60000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-1111-1111-1111-111111111111')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.routines (id, gym_id, name, description, status, created_by) VALUES
+  ('61000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'Fuerza Base A', 'Rutina base de fuerza para miembros iniciales.', 'ACTIVE', '11111111-1111-1111-1111-111111111111'),
+  ('61000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'Tecnica Interna A', 'Rutina interna no asignada usada para pruebas RLS.', 'ACTIVE', '11111111-1111-1111-1111-111111111111'),
+  ('61000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000002', 'Fuerza Base B', 'Rutina minima de Gym Beta para pruebas cross-tenant.', 'ACTIVE', '44444444-4444-4444-4444-444444444444')
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  status = EXCLUDED.status,
+  deleted_at = NULL;
+
+INSERT INTO public.routine_exercises (
+  id, gym_id, routine_id, exercise_id, position, tracking_type,
+  sets_target, reps_min, reps_max, weight_target, duration_seconds_target,
+  distance_meters_target, rest_seconds, notes
+) VALUES
+  ('62000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', '61000000-0000-0000-0000-000000000001', '54000000-0000-0000-0000-000000000001', 1, 'WEIGHT_REPS', 4, 6, 8, NULL, NULL, NULL, 120, 'Press controlado'),
+  ('62000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', '61000000-0000-0000-0000-000000000001', '54000000-0000-0000-0000-000000000002', 2, 'WEIGHT_REPS', 4, 5, 6, NULL, NULL, NULL, 150, 'Priorizar profundidad estable'),
+  ('62000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', '61000000-0000-0000-0000-000000000001', '54000000-0000-0000-0000-000000000005', 3, 'TIME', 3, NULL, NULL, NULL, 45, NULL, 60, 'Mantener linea corporal'),
+  ('62000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000002', '61000000-0000-0000-0000-000000000003', '54000000-0000-0000-0000-000000000004', 1, 'REPS', 3, 3, 5, NULL, NULL, NULL, 120, 'Dominadas asistidas si hace falta')
+ON CONFLICT (id) DO UPDATE SET
+  exercise_id = EXCLUDED.exercise_id,
+  position = EXCLUDED.position,
+  sets_target = EXCLUDED.sets_target,
+  reps_min = EXCLUDED.reps_min,
+  reps_max = EXCLUDED.reps_max,
+  weight_target = EXCLUDED.weight_target,
+  duration_seconds_target = EXCLUDED.duration_seconds_target,
+  distance_meters_target = EXCLUDED.distance_meters_target,
+  rest_seconds = EXCLUDED.rest_seconds,
+  notes = EXCLUDED.notes;
+
+INSERT INTO public.routine_assignments (
+  id, gym_id, routine_id, gym_member_id, assigned_by, starts_at, status, notes
+) VALUES
+  ('63000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', '61000000-0000-0000-0000-000000000001', 'cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-1111-1111-1111-111111111111', '2026-09-01 00:00:00+00', 'ACTIVE', 'Asignacion inicial deterministica'),
+  ('63000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000002', '61000000-0000-0000-0000-000000000003', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', '44444444-4444-4444-4444-444444444444', '2026-09-01 00:00:00+00', 'ACTIVE', 'Asignacion Beta deterministica')
+ON CONFLICT (id) DO NOTHING;
+
+
