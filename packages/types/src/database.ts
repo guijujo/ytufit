@@ -110,6 +110,167 @@ export type Database = {
           },
         ];
       };
+      equipment: {
+        Row: {
+          code: string;
+          created_at: string;
+          id: string;
+          name: string;
+          updated_at: string;
+        };
+        Insert: {
+          code: string;
+          created_at?: string;
+          id?: string;
+          name: string;
+          updated_at?: string;
+        };
+        Update: {
+          code?: string;
+          created_at?: string;
+          id?: string;
+          name?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      exercise_equipment: {
+        Row: {
+          created_at: string;
+          equipment_id: string;
+          exercise_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          equipment_id: string;
+          exercise_id: string;
+        };
+        Update: {
+          created_at?: string;
+          equipment_id?: string;
+          exercise_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'exercise_equipment_equipment_id_fkey';
+            columns: ['equipment_id'];
+            isOneToOne: false;
+            referencedRelation: 'equipment';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'exercise_equipment_exercise_id_fkey';
+            columns: ['exercise_id'];
+            isOneToOne: false;
+            referencedRelation: 'exercises';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      exercise_muscles: {
+        Row: {
+          created_at: string;
+          exercise_id: string;
+          involvement: Database['public']['Enums']['muscle_involvement'];
+          muscle_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          exercise_id: string;
+          involvement: Database['public']['Enums']['muscle_involvement'];
+          muscle_id: string;
+        };
+        Update: {
+          created_at?: string;
+          exercise_id?: string;
+          involvement?: Database['public']['Enums']['muscle_involvement'];
+          muscle_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'exercise_muscles_exercise_id_fkey';
+            columns: ['exercise_id'];
+            isOneToOne: false;
+            referencedRelation: 'exercises';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'exercise_muscles_muscle_id_fkey';
+            columns: ['muscle_id'];
+            isOneToOne: false;
+            referencedRelation: 'muscles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      exercises: {
+        Row: {
+          animation_url: string | null;
+          category: Database['public']['Enums']['exercise_category'];
+          created_at: string;
+          created_by: string | null;
+          deleted_at: string | null;
+          description: string | null;
+          gym_id: string | null;
+          id: string;
+          image_url: string | null;
+          instructions: string[] | null;
+          movement_pattern: Database['public']['Enums']['exercise_movement_pattern'];
+          name: string;
+          scope: Database['public']['Enums']['exercise_scope'];
+          slug: string;
+          status: Database['public']['Enums']['exercise_status'];
+          tracking_type: Database['public']['Enums']['exercise_tracking_type'];
+          updated_at: string;
+        };
+        Insert: {
+          animation_url?: string | null;
+          category: Database['public']['Enums']['exercise_category'];
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          description?: string | null;
+          gym_id?: string | null;
+          id?: string;
+          image_url?: string | null;
+          instructions?: string[] | null;
+          movement_pattern: Database['public']['Enums']['exercise_movement_pattern'];
+          name: string;
+          scope: Database['public']['Enums']['exercise_scope'];
+          slug: string;
+          status?: Database['public']['Enums']['exercise_status'];
+          tracking_type: Database['public']['Enums']['exercise_tracking_type'];
+          updated_at?: string;
+        };
+        Update: {
+          animation_url?: string | null;
+          category?: Database['public']['Enums']['exercise_category'];
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          description?: string | null;
+          gym_id?: string | null;
+          id?: string;
+          image_url?: string | null;
+          instructions?: string[] | null;
+          movement_pattern?: Database['public']['Enums']['exercise_movement_pattern'];
+          name?: string;
+          scope?: Database['public']['Enums']['exercise_scope'];
+          slug?: string;
+          status?: Database['public']['Enums']['exercise_status'];
+          tracking_type?: Database['public']['Enums']['exercise_tracking_type'];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'exercises_gym_id_fkey';
+            columns: ['gym_id'];
+            isOneToOne: false;
+            referencedRelation: 'gyms';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       gym_invitations: {
         Row: {
           accepted_at: string | null;
@@ -465,6 +626,71 @@ export type Database = {
           },
         ];
       };
+      muscle_groups: {
+        Row: {
+          code: string;
+          created_at: string;
+          display_order: number;
+          id: string;
+          name: string;
+          updated_at: string;
+        };
+        Insert: {
+          code: string;
+          created_at?: string;
+          display_order?: number;
+          id?: string;
+          name: string;
+          updated_at?: string;
+        };
+        Update: {
+          code?: string;
+          created_at?: string;
+          display_order?: number;
+          id?: string;
+          name?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      muscles: {
+        Row: {
+          code: string;
+          created_at: string;
+          id: string;
+          map_key: string | null;
+          muscle_group_id: string;
+          name: string;
+          updated_at: string;
+        };
+        Insert: {
+          code: string;
+          created_at?: string;
+          id?: string;
+          map_key?: string | null;
+          muscle_group_id: string;
+          name: string;
+          updated_at?: string;
+        };
+        Update: {
+          code?: string;
+          created_at?: string;
+          id?: string;
+          map_key?: string | null;
+          muscle_group_id?: string;
+          name?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'muscles_muscle_group_id_fkey';
+            columns: ['muscle_group_id'];
+            isOneToOne: false;
+            referencedRelation: 'muscle_groups';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       platform_admins: {
         Row: {
           created_at: string;
@@ -542,8 +768,16 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      archive_gym_exercise: {
+        Args: { p_exercise_id: string };
+        Returns: string;
+      };
       archive_membership_plan: {
         Args: { p_plan_id: string };
+        Returns: string;
+      };
+      archiveGymExercise: {
+        Args: { p_exercise_id: string };
         Returns: string;
       };
       archiveMembershipPlan: {
@@ -584,6 +818,35 @@ export type Database = {
         };
         Returns: string;
       };
+      create_global_exercise: {
+        Args: {
+          p_animation_url?: string;
+          p_category: Database['public']['Enums']['exercise_category'];
+          p_description: string;
+          p_image_url?: string;
+          p_instructions: string[];
+          p_movement_pattern: Database['public']['Enums']['exercise_movement_pattern'];
+          p_name: string;
+          p_slug: string;
+          p_tracking_type: Database['public']['Enums']['exercise_tracking_type'];
+        };
+        Returns: string;
+      };
+      create_gym_exercise: {
+        Args: {
+          p_animation_url?: string;
+          p_category: Database['public']['Enums']['exercise_category'];
+          p_description: string;
+          p_gym_id: string;
+          p_image_url?: string;
+          p_instructions: string[];
+          p_movement_pattern: Database['public']['Enums']['exercise_movement_pattern'];
+          p_name: string;
+          p_slug: string;
+          p_tracking_type: Database['public']['Enums']['exercise_tracking_type'];
+        };
+        Returns: string;
+      };
       create_membership: {
         Args: {
           p_gym_member_id: string;
@@ -604,6 +867,35 @@ export type Database = {
           p_name: string;
           p_price: number;
           p_target: number;
+        };
+        Returns: string;
+      };
+      createGlobalExercise: {
+        Args: {
+          p_animation_url?: string;
+          p_category: Database['public']['Enums']['exercise_category'];
+          p_description: string;
+          p_image_url?: string;
+          p_instructions: string[];
+          p_movement_pattern: Database['public']['Enums']['exercise_movement_pattern'];
+          p_name: string;
+          p_slug: string;
+          p_tracking_type: Database['public']['Enums']['exercise_tracking_type'];
+        };
+        Returns: string;
+      };
+      createGymExercise: {
+        Args: {
+          p_animation_url?: string;
+          p_category: Database['public']['Enums']['exercise_category'];
+          p_description: string;
+          p_gym_id: string;
+          p_image_url?: string;
+          p_instructions: string[];
+          p_movement_pattern: Database['public']['Enums']['exercise_movement_pattern'];
+          p_name: string;
+          p_slug: string;
+          p_tracking_type: Database['public']['Enums']['exercise_tracking_type'];
         };
         Returns: string;
       };
@@ -674,6 +966,38 @@ export type Database = {
         Args: { p_membership_id: string };
         Returns: string;
       };
+      update_global_exercise: {
+        Args: {
+          p_animation_url?: string;
+          p_category: Database['public']['Enums']['exercise_category'];
+          p_description: string;
+          p_exercise_id: string;
+          p_image_url?: string;
+          p_instructions: string[];
+          p_movement_pattern: Database['public']['Enums']['exercise_movement_pattern'];
+          p_name: string;
+          p_slug: string;
+          p_status: Database['public']['Enums']['exercise_status'];
+          p_tracking_type: Database['public']['Enums']['exercise_tracking_type'];
+        };
+        Returns: string;
+      };
+      update_gym_exercise: {
+        Args: {
+          p_animation_url?: string;
+          p_category: Database['public']['Enums']['exercise_category'];
+          p_description: string;
+          p_exercise_id: string;
+          p_image_url?: string;
+          p_instructions: string[];
+          p_movement_pattern: Database['public']['Enums']['exercise_movement_pattern'];
+          p_name: string;
+          p_slug: string;
+          p_status: Database['public']['Enums']['exercise_status'];
+          p_tracking_type: Database['public']['Enums']['exercise_tracking_type'];
+        };
+        Returns: string;
+      };
       update_membership_plan: {
         Args: {
           p_access_limit: number;
@@ -686,6 +1010,38 @@ export type Database = {
           p_plan_id: string;
           p_price: number;
           p_target: number;
+        };
+        Returns: string;
+      };
+      updateGlobalExercise: {
+        Args: {
+          p_animation_url?: string;
+          p_category: Database['public']['Enums']['exercise_category'];
+          p_description: string;
+          p_exercise_id: string;
+          p_image_url?: string;
+          p_instructions: string[];
+          p_movement_pattern: Database['public']['Enums']['exercise_movement_pattern'];
+          p_name: string;
+          p_slug: string;
+          p_status: Database['public']['Enums']['exercise_status'];
+          p_tracking_type: Database['public']['Enums']['exercise_tracking_type'];
+        };
+        Returns: string;
+      };
+      updateGymExercise: {
+        Args: {
+          p_animation_url?: string;
+          p_category: Database['public']['Enums']['exercise_category'];
+          p_description: string;
+          p_exercise_id: string;
+          p_image_url?: string;
+          p_instructions: string[];
+          p_movement_pattern: Database['public']['Enums']['exercise_movement_pattern'];
+          p_name: string;
+          p_slug: string;
+          p_status: Database['public']['Enums']['exercise_status'];
+          p_tracking_type: Database['public']['Enums']['exercise_tracking_type'];
         };
         Returns: string;
       };
@@ -709,11 +1065,32 @@ export type Database = {
       attendance_method:
         'MANUAL' | 'QR' | 'WORKOUT_COMPLETED' | 'WORKOUT_STARTED';
       attendance_status: 'CANCELLED' | 'VALID';
+      exercise_category: 'STRENGTH' | 'CARDIO' | 'MOBILITY' | 'STRETCHING';
+      exercise_movement_pattern:
+        | 'PUSH'
+        | 'PULL'
+        | 'SQUAT'
+        | 'HINGE'
+        | 'LUNGE'
+        | 'CARRY'
+        | 'ROTATION'
+        | 'ISOMETRIC'
+        | 'CARDIO';
+      exercise_scope: 'GLOBAL' | 'GYM';
+      exercise_status: 'ACTIVE' | 'INACTIVE';
+      exercise_tracking_type:
+        | 'WEIGHT_REPS'
+        | 'REPS'
+        | 'TIME'
+        | 'DISTANCE_TIME'
+        | 'WEIGHT_TIME'
+        | 'WEIGHT_DISTANCE';
       membership_access_type:
         'ACCESS_COUNT' | 'MONTHLY_LIMIT' | 'UNLIMITED' | 'WEEKLY_FREQUENCY';
       membership_frequency_period: 'MONTH' | 'WEEK';
       membership_plan_status: 'ACTIVE' | 'INACTIVE';
       membership_status: 'ACTIVE' | 'CANCELLED' | 'EXPIRED' | 'SUSPENDED';
+      muscle_involvement: 'PRIMARY' | 'SECONDARY';
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -851,6 +1228,28 @@ export const Constants = {
         'WORKOUT_STARTED',
       ],
       attendance_status: ['CANCELLED', 'VALID'],
+      exercise_category: ['STRENGTH', 'CARDIO', 'MOBILITY', 'STRETCHING'],
+      exercise_movement_pattern: [
+        'PUSH',
+        'PULL',
+        'SQUAT',
+        'HINGE',
+        'LUNGE',
+        'CARRY',
+        'ROTATION',
+        'ISOMETRIC',
+        'CARDIO',
+      ],
+      exercise_scope: ['GLOBAL', 'GYM'],
+      exercise_status: ['ACTIVE', 'INACTIVE'],
+      exercise_tracking_type: [
+        'WEIGHT_REPS',
+        'REPS',
+        'TIME',
+        'DISTANCE_TIME',
+        'WEIGHT_TIME',
+        'WEIGHT_DISTANCE',
+      ],
       membership_access_type: [
         'ACCESS_COUNT',
         'MONTHLY_LIMIT',
@@ -860,6 +1259,7 @@ export const Constants = {
       membership_frequency_period: ['MONTH', 'WEEK'],
       membership_plan_status: ['ACTIVE', 'INACTIVE'],
       membership_status: ['ACTIVE', 'CANCELLED', 'EXPIRED', 'SUSPENDED'],
+      muscle_involvement: ['PRIMARY', 'SECONDARY'],
     },
   },
 } as const;
