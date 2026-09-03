@@ -141,3 +141,107 @@ INSERT INTO public.attendances (
    '2026-08-04', '2026-08-04 18:00:00+00', 'QR', 'VALID',
    'seed-b-1', '55555555-5555-5555-5555-555555555555', NULL, NULL, NULL)
 ON CONFLICT (id) DO NOTHING;
+
+-- 10. Training exercise library catalogs
+INSERT INTO public.muscle_groups (id, name, code, display_order) VALUES
+  ('51000000-0000-0000-0000-000000000001', 'Chest', 'chest', 10),
+  ('51000000-0000-0000-0000-000000000002', 'Shoulders', 'shoulders', 20),
+  ('51000000-0000-0000-0000-000000000003', 'Arms', 'arms', 30),
+  ('51000000-0000-0000-0000-000000000004', 'Back', 'back', 40),
+  ('51000000-0000-0000-0000-000000000005', 'Legs', 'legs', 50),
+  ('51000000-0000-0000-0000-000000000006', 'Core', 'core', 60),
+  ('51000000-0000-0000-0000-000000000007', 'Cardio', 'cardio', 70)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  code = EXCLUDED.code,
+  display_order = EXCLUDED.display_order;
+
+INSERT INTO public.muscles (id, muscle_group_id, name, code, map_key) VALUES
+  ('52000000-0000-0000-0000-000000000001', '51000000-0000-0000-0000-000000000001', 'Pectoralis major', 'pectoralis_major', 'pectoralis_major'),
+  ('52000000-0000-0000-0000-000000000002', '51000000-0000-0000-0000-000000000002', 'Anterior deltoid', 'anterior_deltoid', 'anterior_deltoid'),
+  ('52000000-0000-0000-0000-000000000003', '51000000-0000-0000-0000-000000000003', 'Triceps', 'triceps', 'triceps'),
+  ('52000000-0000-0000-0000-000000000004', '51000000-0000-0000-0000-000000000003', 'Biceps', 'biceps', 'biceps'),
+  ('52000000-0000-0000-0000-000000000005', '51000000-0000-0000-0000-000000000004', 'Latissimus dorsi', 'latissimus_dorsi', 'latissimus_dorsi'),
+  ('52000000-0000-0000-0000-000000000006', '51000000-0000-0000-0000-000000000005', 'Quadriceps', 'quadriceps', 'quadriceps'),
+  ('52000000-0000-0000-0000-000000000007', '51000000-0000-0000-0000-000000000005', 'Hamstrings', 'hamstrings', 'hamstrings'),
+  ('52000000-0000-0000-0000-000000000008', '51000000-0000-0000-0000-000000000005', 'Gluteus maximus', 'gluteus_maximus', 'gluteus_maximus'),
+  ('52000000-0000-0000-0000-000000000009', '51000000-0000-0000-0000-000000000005', 'Calves', 'calves', 'calves'),
+  ('52000000-0000-0000-0000-000000000010', '51000000-0000-0000-0000-000000000006', 'Rectus abdominis', 'rectus_abdominis', 'rectus_abdominis'),
+  ('52000000-0000-0000-0000-000000000011', '51000000-0000-0000-0000-000000000007', 'Cardiorespiratory system', 'cardiorespiratory_system', 'cardiorespiratory_system')
+ON CONFLICT (id) DO UPDATE SET
+  muscle_group_id = EXCLUDED.muscle_group_id,
+  name = EXCLUDED.name,
+  code = EXCLUDED.code,
+  map_key = EXCLUDED.map_key;
+
+INSERT INTO public.equipment (id, name, code) VALUES
+  ('53000000-0000-0000-0000-000000000001', 'Barbell', 'barbell'),
+  ('53000000-0000-0000-0000-000000000002', 'Dumbbell', 'dumbbell'),
+  ('53000000-0000-0000-0000-000000000003', 'Bodyweight', 'bodyweight'),
+  ('53000000-0000-0000-0000-000000000004', 'Bench', 'bench'),
+  ('53000000-0000-0000-0000-000000000005', 'Pull-up bar', 'pull_up_bar'),
+  ('53000000-0000-0000-0000-000000000006', 'Cardio machine', 'cardio_machine')
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  code = EXCLUDED.code;
+
+-- 11. Minimal deterministic exercise library
+INSERT INTO public.exercises (
+  id, scope, gym_id, name, slug, description, instructions, tracking_type,
+  category, movement_pattern, created_by
+) VALUES
+  ('54000000-0000-0000-0000-000000000001', 'GLOBAL', NULL, 'Press de banca', 'press-de-banca',
+   'Empuje horizontal con barra en banco plano.', ARRAY['Ubicar la espalda en el banco.', 'Bajar la barra con control.', 'Empujar hasta extender los brazos.'], 'WEIGHT_REPS', 'STRENGTH', 'PUSH', '99999999-9999-9999-9999-999999999999'),
+  ('54000000-0000-0000-0000-000000000002', 'GLOBAL', NULL, 'Sentadilla', 'sentadilla',
+   'Patron dominante de rodilla con carga externa.', ARRAY['Apoyar la barra de forma estable.', 'Descender manteniendo control.', 'Subir empujando el piso.'], 'WEIGHT_REPS', 'STRENGTH', 'SQUAT', '99999999-9999-9999-9999-999999999999'),
+  ('54000000-0000-0000-0000-000000000003', 'GLOBAL', NULL, 'Peso muerto', 'peso-muerto',
+   'Bisagra de cadera con barra desde el piso.', ARRAY['Preparar la barra cerca del cuerpo.', 'Extender cadera y rodillas.', 'Bajar con control.'], 'WEIGHT_REPS', 'STRENGTH', 'HINGE', '99999999-9999-9999-9999-999999999999'),
+  ('54000000-0000-0000-0000-000000000004', 'GLOBAL', NULL, 'Dominadas', 'dominadas',
+   'Traccion vertical con peso corporal.', ARRAY['Colgarse de la barra.', 'Elevar el cuerpo hasta superar la barra.', 'Descender con control.'], 'REPS', 'STRENGTH', 'PULL', '99999999-9999-9999-9999-999999999999'),
+  ('54000000-0000-0000-0000-000000000005', 'GLOBAL', NULL, 'Plancha', 'plancha',
+   'Isometrico de core en posicion prona.', ARRAY['Alinear hombros, cadera y tobillos.', 'Mantener tension abdominal.', 'Sostener el tiempo indicado.'], 'TIME', 'STRENGTH', 'ISOMETRIC', '99999999-9999-9999-9999-999999999999'),
+  ('54000000-0000-0000-0000-000000000006', 'GLOBAL', NULL, 'Cinta', 'cinta',
+   'Trabajo cardiovascular en cinta.', ARRAY['Configurar velocidad e inclinacion.', 'Mantener tecnica estable.', 'Registrar distancia y tiempo.'], 'DISTANCE_TIME', 'CARDIO', 'CARDIO', '99999999-9999-9999-9999-999999999999'),
+  ('55000000-0000-0000-0000-000000000001', 'GYM', '00000000-0000-0000-0000-000000000001', 'Press inclinado Gym Alpha', 'press-inclinado-alpha',
+   'Ejercicio privado de Gym Alpha para pruebas de tenant.', NULL, 'WEIGHT_REPS', 'STRENGTH', 'PUSH', '11111111-1111-1111-1111-111111111111'),
+  ('55000000-0000-0000-0000-000000000002', 'GYM', '00000000-0000-0000-0000-000000000002', 'Remo Gym Beta', 'remo-beta',
+   'Ejercicio privado de Gym Beta para pruebas de tenant.', NULL, 'WEIGHT_REPS', 'STRENGTH', 'PULL', '44444444-4444-4444-4444-444444444444')
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  slug = EXCLUDED.slug,
+  description = EXCLUDED.description,
+  instructions = EXCLUDED.instructions,
+  tracking_type = EXCLUDED.tracking_type,
+  category = EXCLUDED.category,
+  movement_pattern = EXCLUDED.movement_pattern,
+  status = 'ACTIVE',
+  deleted_at = NULL;
+
+INSERT INTO public.exercise_muscles (exercise_id, muscle_id, involvement) VALUES
+  ('54000000-0000-0000-0000-000000000001', '52000000-0000-0000-0000-000000000001', 'PRIMARY'),
+  ('54000000-0000-0000-0000-000000000001', '52000000-0000-0000-0000-000000000003', 'SECONDARY'),
+  ('54000000-0000-0000-0000-000000000001', '52000000-0000-0000-0000-000000000002', 'SECONDARY'),
+  ('54000000-0000-0000-0000-000000000002', '52000000-0000-0000-0000-000000000006', 'PRIMARY'),
+  ('54000000-0000-0000-0000-000000000002', '52000000-0000-0000-0000-000000000008', 'SECONDARY'),
+  ('54000000-0000-0000-0000-000000000003', '52000000-0000-0000-0000-000000000007', 'PRIMARY'),
+  ('54000000-0000-0000-0000-000000000003', '52000000-0000-0000-0000-000000000008', 'SECONDARY'),
+  ('54000000-0000-0000-0000-000000000004', '52000000-0000-0000-0000-000000000005', 'PRIMARY'),
+  ('54000000-0000-0000-0000-000000000004', '52000000-0000-0000-0000-000000000004', 'SECONDARY'),
+  ('54000000-0000-0000-0000-000000000005', '52000000-0000-0000-0000-000000000010', 'PRIMARY'),
+  ('54000000-0000-0000-0000-000000000006', '52000000-0000-0000-0000-000000000011', 'PRIMARY'),
+  ('55000000-0000-0000-0000-000000000001', '52000000-0000-0000-0000-000000000001', 'PRIMARY'),
+  ('55000000-0000-0000-0000-000000000002', '52000000-0000-0000-0000-000000000005', 'PRIMARY')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.exercise_equipment (exercise_id, equipment_id) VALUES
+  ('54000000-0000-0000-0000-000000000001', '53000000-0000-0000-0000-000000000001'),
+  ('54000000-0000-0000-0000-000000000001', '53000000-0000-0000-0000-000000000004'),
+  ('54000000-0000-0000-0000-000000000002', '53000000-0000-0000-0000-000000000001'),
+  ('54000000-0000-0000-0000-000000000003', '53000000-0000-0000-0000-000000000001'),
+  ('54000000-0000-0000-0000-000000000004', '53000000-0000-0000-0000-000000000003'),
+  ('54000000-0000-0000-0000-000000000004', '53000000-0000-0000-0000-000000000005'),
+  ('54000000-0000-0000-0000-000000000005', '53000000-0000-0000-0000-000000000003'),
+  ('54000000-0000-0000-0000-000000000006', '53000000-0000-0000-0000-000000000006'),
+  ('55000000-0000-0000-0000-000000000001', '53000000-0000-0000-0000-000000000001'),
+  ('55000000-0000-0000-0000-000000000002', '53000000-0000-0000-0000-000000000002')
+ON CONFLICT DO NOTHING;
