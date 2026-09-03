@@ -47,6 +47,20 @@ export const exerciseMovementPatterns = [
 ] as const;
 export type ExerciseMovementPattern = (typeof exerciseMovementPatterns)[number];
 
+export const routineStatuses = ['ACTIVE', 'INACTIVE', 'ARCHIVED'] as const;
+export type RoutineStatus = (typeof routineStatuses)[number];
+
+export const routineAssignmentStatuses = [
+  'ACTIVE',
+  'COMPLETED',
+  'CANCELLED',
+] as const;
+export type RoutineAssignmentStatus =
+  (typeof routineAssignmentStatuses)[number];
+
+export const trainerMemberAssignmentStatuses = ['ACTIVE', 'INACTIVE'] as const;
+export type TrainerMemberAssignmentStatus =
+  (typeof trainerMemberAssignmentStatuses)[number];
 export const domainEvents = [
   'ATTENDANCE_CREATED',
   'WORKOUT_COMPLETED',

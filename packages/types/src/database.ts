@@ -763,17 +763,284 @@ export type Database = {
         };
         Relationships: [];
       };
+      routine_assignments: {
+        Row: {
+          assigned_by: string;
+          created_at: string;
+          ends_at: string | null;
+          gym_id: string;
+          gym_member_id: string;
+          id: string;
+          notes: string | null;
+          routine_id: string;
+          starts_at: string;
+          status: Database['public']['Enums']['routine_assignment_status'];
+          updated_at: string;
+        };
+        Insert: {
+          assigned_by: string;
+          created_at?: string;
+          ends_at?: string | null;
+          gym_id: string;
+          gym_member_id: string;
+          id?: string;
+          notes?: string | null;
+          routine_id: string;
+          starts_at?: string;
+          status?: Database['public']['Enums']['routine_assignment_status'];
+          updated_at?: string;
+        };
+        Update: {
+          assigned_by?: string;
+          created_at?: string;
+          ends_at?: string | null;
+          gym_id?: string;
+          gym_member_id?: string;
+          id?: string;
+          notes?: string | null;
+          routine_id?: string;
+          starts_at?: string;
+          status?: Database['public']['Enums']['routine_assignment_status'];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'routine_assignments_member_fk';
+            columns: ['gym_member_id', 'gym_id'];
+            isOneToOne: false;
+            referencedRelation: 'gym_members';
+            referencedColumns: ['id', 'gym_id'];
+          },
+          {
+            foreignKeyName: 'routine_assignments_routine_fk';
+            columns: ['routine_id', 'gym_id'];
+            isOneToOne: false;
+            referencedRelation: 'routines';
+            referencedColumns: ['id', 'gym_id'];
+          },
+        ];
+      };
+      routine_exercises: {
+        Row: {
+          created_at: string;
+          distance_meters_target: number | null;
+          duration_seconds_target: number | null;
+          exercise_id: string;
+          gym_id: string;
+          id: string;
+          notes: string | null;
+          position: number;
+          reps_max: number | null;
+          reps_min: number | null;
+          rest_seconds: number | null;
+          routine_id: string;
+          sets_target: number | null;
+          tracking_type: Database['public']['Enums']['exercise_tracking_type'];
+          updated_at: string;
+          weight_target: number | null;
+        };
+        Insert: {
+          created_at?: string;
+          distance_meters_target?: number | null;
+          duration_seconds_target?: number | null;
+          exercise_id: string;
+          gym_id: string;
+          id?: string;
+          notes?: string | null;
+          position: number;
+          reps_max?: number | null;
+          reps_min?: number | null;
+          rest_seconds?: number | null;
+          routine_id: string;
+          sets_target?: number | null;
+          tracking_type: Database['public']['Enums']['exercise_tracking_type'];
+          updated_at?: string;
+          weight_target?: number | null;
+        };
+        Update: {
+          created_at?: string;
+          distance_meters_target?: number | null;
+          duration_seconds_target?: number | null;
+          exercise_id?: string;
+          gym_id?: string;
+          id?: string;
+          notes?: string | null;
+          position?: number;
+          reps_max?: number | null;
+          reps_min?: number | null;
+          rest_seconds?: number | null;
+          routine_id?: string;
+          sets_target?: number | null;
+          tracking_type?: Database['public']['Enums']['exercise_tracking_type'];
+          updated_at?: string;
+          weight_target?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'routine_exercises_exercise_id_fkey';
+            columns: ['exercise_id'];
+            isOneToOne: false;
+            referencedRelation: 'exercises';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'routine_exercises_routine_fk';
+            columns: ['routine_id', 'gym_id'];
+            isOneToOne: false;
+            referencedRelation: 'routines';
+            referencedColumns: ['id', 'gym_id'];
+          },
+        ];
+      };
+      routines: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          deleted_at: string | null;
+          description: string | null;
+          gym_id: string;
+          id: string;
+          name: string;
+          status: Database['public']['Enums']['routine_status'];
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          description?: string | null;
+          gym_id: string;
+          id?: string;
+          name: string;
+          status?: Database['public']['Enums']['routine_status'];
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          description?: string | null;
+          gym_id?: string;
+          id?: string;
+          name?: string;
+          status?: Database['public']['Enums']['routine_status'];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'routines_gym_id_fkey';
+            columns: ['gym_id'];
+            isOneToOne: false;
+            referencedRelation: 'gyms';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      trainer_member_assignments: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          ended_at: string | null;
+          gym_id: string;
+          id: string;
+          member_gym_member_id: string;
+          status: Database['public']['Enums']['trainer_member_assignment_status'];
+          trainer_gym_member_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          ended_at?: string | null;
+          gym_id: string;
+          id?: string;
+          member_gym_member_id: string;
+          status?: Database['public']['Enums']['trainer_member_assignment_status'];
+          trainer_gym_member_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          ended_at?: string | null;
+          gym_id?: string;
+          id?: string;
+          member_gym_member_id?: string;
+          status?: Database['public']['Enums']['trainer_member_assignment_status'];
+          trainer_gym_member_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'trainer_member_assignments_gym_id_fkey';
+            columns: ['gym_id'];
+            isOneToOne: false;
+            referencedRelation: 'gyms';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'trainer_member_assignments_member_fk';
+            columns: ['member_gym_member_id', 'gym_id'];
+            isOneToOne: false;
+            referencedRelation: 'gym_members';
+            referencedColumns: ['id', 'gym_id'];
+          },
+          {
+            foreignKeyName: 'trainer_member_assignments_trainer_fk';
+            columns: ['trainer_gym_member_id', 'gym_id'];
+            isOneToOne: false;
+            referencedRelation: 'gym_members';
+            referencedColumns: ['id', 'gym_id'];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
+      add_routine_exercise: {
+        Args: {
+          p_distance_meters_target?: number;
+          p_duration_seconds_target?: number;
+          p_exercise_id: string;
+          p_notes?: string;
+          p_position: number;
+          p_reps_max?: number;
+          p_reps_min?: number;
+          p_rest_seconds?: number;
+          p_routine_id: string;
+          p_sets_target?: number;
+          p_weight_target?: number;
+        };
+        Returns: string;
+      };
+      addRoutineExercise: {
+        Args: {
+          p_distance_meters_target?: number;
+          p_duration_seconds_target?: number;
+          p_exercise_id: string;
+          p_notes?: string;
+          p_position: number;
+          p_reps_max?: number;
+          p_reps_min?: number;
+          p_rest_seconds?: number;
+          p_routine_id: string;
+          p_sets_target?: number;
+          p_weight_target?: number;
+        };
+        Returns: string;
+      };
       archive_gym_exercise: {
         Args: { p_exercise_id: string };
         Returns: string;
       };
       archive_membership_plan: {
         Args: { p_plan_id: string };
+        Returns: string;
+      };
+      archive_routine: {
+        Args: { p_routine_id: string };
         Returns: string;
       };
       archiveGymExercise: {
@@ -784,6 +1051,28 @@ export type Database = {
         Args: { p_plan_id: string };
         Returns: string;
       };
+      archiveRoutine: {
+        Args: { p_routine_id: string };
+        Returns: string;
+      };
+      assign_routine: {
+        Args: {
+          p_gym_member_id: string;
+          p_notes?: string;
+          p_routine_id: string;
+          p_starts_at?: string;
+        };
+        Returns: string;
+      };
+      assignRoutine: {
+        Args: {
+          p_gym_member_id: string;
+          p_notes?: string;
+          p_routine_id: string;
+          p_starts_at?: string;
+        };
+        Returns: string;
+      };
       cancel_attendance: {
         Args: { p_attendance_id: string; p_reason: string };
         Returns: string;
@@ -792,12 +1081,20 @@ export type Database = {
         Args: { p_membership_id: string; p_reason: string };
         Returns: string;
       };
+      cancel_routine_assignment: {
+        Args: { p_assignment_id: string; p_ends_at?: string; p_notes?: string };
+        Returns: string;
+      };
       cancelAttendance: {
         Args: { p_attendance_id: string; p_reason: string };
         Returns: string;
       };
       cancelMembership: {
         Args: { p_membership_id: string; p_reason: string };
+        Returns: string;
+      };
+      cancelRoutineAssignment: {
+        Args: { p_assignment_id: string; p_ends_at?: string; p_notes?: string };
         Returns: string;
       };
       change_membership_plan: {
@@ -816,6 +1113,14 @@ export type Database = {
           p_reason?: string;
           p_starts_at?: string;
         };
+        Returns: string;
+      };
+      complete_routine_assignment: {
+        Args: { p_assignment_id: string; p_ends_at?: string };
+        Returns: string;
+      };
+      completeRoutineAssignment: {
+        Args: { p_assignment_id: string; p_ends_at?: string };
         Returns: string;
       };
       create_global_exercise: {
@@ -867,6 +1172,18 @@ export type Database = {
           p_name: string;
           p_price: number;
           p_target: number;
+        };
+        Returns: string;
+      };
+      create_routine: {
+        Args: { p_description?: string; p_gym_id: string; p_name: string };
+        Returns: string;
+      };
+      create_trainer_member_assignment: {
+        Args: {
+          p_gym_id: string;
+          p_member_gym_member_id: string;
+          p_trainer_gym_member_id: string;
         };
         Returns: string;
       };
@@ -922,6 +1239,18 @@ export type Database = {
         };
         Returns: string;
       };
+      createRoutine: {
+        Args: { p_description?: string; p_gym_id: string; p_name: string };
+        Returns: string;
+      };
+      createTrainerMemberAssignment: {
+        Args: {
+          p_gym_id: string;
+          p_member_gym_member_id: string;
+          p_trainer_gym_member_id: string;
+        };
+        Returns: string;
+      };
       register_attendance: {
         Args: {
           p_gym_member_id: string;
@@ -942,12 +1271,28 @@ export type Database = {
         };
         Returns: string;
       };
+      remove_routine_exercise: {
+        Args: { p_routine_exercise_id: string };
+        Returns: string;
+      };
+      removeRoutineExercise: {
+        Args: { p_routine_exercise_id: string };
+        Returns: string;
+      };
       renew_membership: {
         Args: { p_membership_id: string; p_starts_at?: string };
         Returns: string;
       };
       renewMembership: {
         Args: { p_membership_id: string; p_starts_at?: string };
+        Returns: string;
+      };
+      reorder_routine_exercises: {
+        Args: { p_order: Json; p_routine_id: string };
+        Returns: string;
+      };
+      reorderRoutineExercises: {
+        Args: { p_order: Json; p_routine_id: string };
         Returns: string;
       };
       resume_membership: {
@@ -1029,6 +1374,31 @@ export type Database = {
         };
         Returns: string;
       };
+      update_routine: {
+        Args: {
+          p_description: string;
+          p_name: string;
+          p_routine_id: string;
+          p_status: Database['public']['Enums']['routine_status'];
+        };
+        Returns: string;
+      };
+      update_routine_exercise: {
+        Args: {
+          p_distance_meters_target?: number;
+          p_duration_seconds_target?: number;
+          p_exercise_id: string;
+          p_notes?: string;
+          p_position: number;
+          p_reps_max?: number;
+          p_reps_min?: number;
+          p_rest_seconds?: number;
+          p_routine_exercise_id: string;
+          p_sets_target?: number;
+          p_weight_target?: number;
+        };
+        Returns: string;
+      };
       updateGlobalExercise: {
         Args: {
           p_animation_url?: string;
@@ -1076,6 +1446,31 @@ export type Database = {
         };
         Returns: string;
       };
+      updateRoutine: {
+        Args: {
+          p_description: string;
+          p_name: string;
+          p_routine_id: string;
+          p_status: Database['public']['Enums']['routine_status'];
+        };
+        Returns: string;
+      };
+      updateRoutineExercise: {
+        Args: {
+          p_distance_meters_target?: number;
+          p_duration_seconds_target?: number;
+          p_exercise_id: string;
+          p_notes?: string;
+          p_position: number;
+          p_reps_max?: number;
+          p_reps_min?: number;
+          p_rest_seconds?: number;
+          p_routine_exercise_id: string;
+          p_sets_target?: number;
+          p_weight_target?: number;
+        };
+        Returns: string;
+      };
     };
     Enums: {
       attendance_method:
@@ -1107,6 +1502,9 @@ export type Database = {
       membership_plan_status: 'ACTIVE' | 'INACTIVE';
       membership_status: 'ACTIVE' | 'CANCELLED' | 'EXPIRED' | 'SUSPENDED';
       muscle_involvement: 'PRIMARY' | 'SECONDARY';
+      routine_assignment_status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+      routine_status: 'ACTIVE' | 'INACTIVE' | 'ARCHIVED';
+      trainer_member_assignment_status: 'ACTIVE' | 'INACTIVE';
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -1276,6 +1674,9 @@ export const Constants = {
       membership_plan_status: ['ACTIVE', 'INACTIVE'],
       membership_status: ['ACTIVE', 'CANCELLED', 'EXPIRED', 'SUSPENDED'],
       muscle_involvement: ['PRIMARY', 'SECONDARY'],
+      routine_assignment_status: ['ACTIVE', 'COMPLETED', 'CANCELLED'],
+      routine_status: ['ACTIVE', 'INACTIVE', 'ARCHIVED'],
+      trainer_member_assignment_status: ['ACTIVE', 'INACTIVE'],
     },
   },
 } as const;
