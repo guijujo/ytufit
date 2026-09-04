@@ -54,8 +54,16 @@ This keeps the distinction clear: a routine is the current mutable prescription 
 
 Only the owner Member can complete or cancel their own `IN_PROGRESS` workout. Gym Admins and Trainers can read according to tenant and current trainer-member authorization, but they cannot record or forge member performance through workout commands.
 
-Completing a workout leaves any remaining `PLANNED` sets as planned, representing prescribed sets that were not recorded. It does not auto-complete or auto-skip them. Once a workout is `COMPLETED` or `CANCELLED`, workout performance is immutable through the MVP RPCs.
+Completing a workout leaves any remaining `PLANNED` sets as planned, representing prescribed sets that were not recorded. It does not auto-complete or auto-skip them. Once a workout is `COMPLETED` or `CANCELLED`, workout performance is immutable through the MVP RPCs and database guards prevent privileged accidental mutation of finalized sessions, snapshots and sets.
+
+## Hardening Invariants
+
+Workout sessions carry a database invariant tying `routine_assignment_id`, `gym_id`, `gym_member_id` and `routine_id` to the exact same routine assignment. Snapshot source ids are checked together while present, so a workout exercise cannot be deliberately pointed at a routine exercise and an unrelated source exercise. Source ids may still become `NULL` through allowed deletes without destroying historical snapshot fields.
+
+Workout identity fields and set identity fields are immutable after insert. Members can finish an already-started workout even if the routine assignment is later completed or cancelled, or if the routine is archived after the workout began; terminal assignments still cannot start new workouts.
+
+Trainer workout visibility is intentionally current-authorization based: deactivating a trainer-member assignment removes Trainer read access to that member's workout sessions, exercise snapshots and sets. The Member history remains, and Gym Admins keep same-tenant visibility.
 
 ## Attendance Boundary
 
-Workout sessions do not call `register_attendance` and do not insert attendance rows in v2.0.3-C. Workout-driven attendance remains a later hardening step because it needs explicit anti-abuse rules before a member can generate attendance from workout activity.
+Workout sessions do not call `register_attendance` and do not insert attendance rows in v2.0.3-D. Workout-driven attendance remains a later hardening step because it needs explicit anti-abuse rules before a member can generate attendance from workout activity.

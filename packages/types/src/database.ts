@@ -1140,6 +1140,18 @@ export type Database = {
             referencedColumns: ['id', 'gym_id'];
           },
           {
+            foreignKeyName: 'workout_sessions_assignment_identity_fk';
+            columns: [
+              'routine_assignment_id',
+              'gym_id',
+              'gym_member_id',
+              'routine_id',
+            ];
+            isOneToOne: false;
+            referencedRelation: 'routine_assignments';
+            referencedColumns: ['id', 'gym_id', 'gym_member_id', 'routine_id'];
+          },
+          {
             foreignKeyName: 'workout_sessions_gym_id_fkey';
             columns: ['gym_id'];
             isOneToOne: false;
