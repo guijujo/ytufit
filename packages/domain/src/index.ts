@@ -68,7 +68,11 @@ export type StreakPeriodType = (typeof streakPeriodTypes)[number];
 export const streakRuleStatuses = ['ACTIVE', 'INACTIVE', 'ARCHIVED'] as const;
 export type StreakRuleStatus = (typeof streakRuleStatuses)[number];
 
-export const memberStreakRuleStatuses = ['ACTIVE', 'ENDED'] as const;
+export const memberStreakRuleStatuses = [
+  'ACTIVE',
+  'SCHEDULED',
+  'ENDED',
+] as const;
 export type MemberStreakRuleStatus = (typeof memberStreakRuleStatuses)[number];
 
 export const streakPeriodStatuses = [

@@ -2199,7 +2199,7 @@ export type Database = {
         | 'DISTANCE_TIME'
         | 'WEIGHT_TIME'
         | 'WEIGHT_DISTANCE';
-      member_streak_rule_status: 'ACTIVE' | 'ENDED';
+      member_streak_rule_status: 'ACTIVE' | 'SCHEDULED' | 'ENDED';
       membership_access_type:
         'ACCESS_COUNT' | 'MONTHLY_LIMIT' | 'UNLIMITED' | 'WEEKLY_FREQUENCY';
       membership_frequency_period: 'MONTH' | 'WEEK';
@@ -2380,7 +2380,7 @@ export const Constants = {
         'WEIGHT_TIME',
         'WEIGHT_DISTANCE',
       ],
-      member_streak_rule_status: ['ACTIVE', 'ENDED'],
+      member_streak_rule_status: ['ACTIVE', 'SCHEDULED', 'ENDED'],
       membership_access_type: [
         'ACCESS_COUNT',
         'MONTHLY_LIMIT',

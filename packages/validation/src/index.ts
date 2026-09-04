@@ -311,7 +311,11 @@ export const streakRuleStatusSchema = z.enum([
   'ARCHIVED',
 ]);
 export const editableStreakRuleStatusSchema = z.enum(['ACTIVE', 'INACTIVE']);
-export const memberStreakRuleStatusSchema = z.enum(['ACTIVE', 'ENDED']);
+export const memberStreakRuleStatusSchema = z.enum([
+  'ACTIVE',
+  'SCHEDULED',
+  'ENDED',
+]);
 export const streakPeriodStatusSchema = z.enum([
   'OPEN',
   'COMPLETED',

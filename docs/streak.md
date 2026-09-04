@@ -22,11 +22,17 @@ CamelCase aliases exist for clients that use RPC names matching application comm
 
 When a rule is assigned to a member, the relevant rule configuration is copied into member_streak_rules. Historical rows keep their snapshot even if the source rule is later edited or archived.
 
-change_member_streak_rule ends the current assignment at the next Monday boundary in the current snapshot timezone and creates the replacement assignment at that same boundary. The model still keeps exactly one ACTIVE assignment row per member.
+Assignment lifecycle:
+
+- ACTIVE: currently effective. starts_at is in the past or present, and ends_at is either null or the future boundary where a scheduled successor takes over.
+- SCHEDULED: future successor. starts_at is the future boundary where it may become active; ends_at is null.
+- ENDED: historical assignment whose effective interval has ended.
+
+change_member_streak_rule keeps the current ACTIVE assignment effective until the next Monday boundary in the current snapshot timezone, sets its ends_at to that boundary, and creates one SCHEDULED replacement assignment whose starts_at is the same boundary. SCHEDULED assignments are not currently effective; v2.0.4-2 is expected to activate them when the boundary is reached.
 
 ## Projections And Ledger
 
-member_streaks stores the current projection for a gym member. Initial assignment creates the projection and grants the configured freeze balance. Freeze grants are recorded in streak_freeze_transactions; future engine work should append CONSUME, RESTORE, and EXPIRE transactions instead of mutating history.
+member_streaks stores the current projection for a gym member. Initial enrollment creates the projection and grants the configured freeze balance once. Rule changes preserve current_streak, best_streak, and freezes_available, and create no new GRANT transaction. Freeze grants are recorded in streak_freeze_transactions; future engine work should append CONSUME, RESTORE, and EXPIRE transactions instead of mutating history.
 
 streak_periods stores weekly period state and snapshots the target and timezone used for that period. Periods and ledger entries enforce composite tenant/member foreign keys so rows cannot point at another member assignment or period.
 

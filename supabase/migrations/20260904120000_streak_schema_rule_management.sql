@@ -5,7 +5,7 @@
 
 CREATE TYPE public.streak_period_type AS ENUM ('WEEK');
 CREATE TYPE public.streak_rule_status AS ENUM ('ACTIVE', 'INACTIVE', 'ARCHIVED');
-CREATE TYPE public.member_streak_rule_status AS ENUM ('ACTIVE', 'ENDED');
+CREATE TYPE public.member_streak_rule_status AS ENUM ('ACTIVE', 'SCHEDULED', 'ENDED');
 CREATE TYPE public.streak_period_status AS ENUM ('OPEN', 'COMPLETED', 'FROZEN', 'MISSED', 'NOT_ELIGIBLE');
 CREATE TYPE public.streak_freeze_transaction_type AS ENUM ('GRANT', 'CONSUME', 'RESTORE', 'EXPIRE');
 CREATE TYPE public.streak_period_eligibility_reason AS ENUM (
@@ -65,7 +65,8 @@ CREATE TABLE public.member_streak_rules (
     REFERENCES public.streak_rules (id, gym_id) ON DELETE RESTRICT,
   CONSTRAINT member_streak_rules_week_only_check CHECK (period_type = 'WEEK'),
   CONSTRAINT member_streak_rules_status_dates_check CHECK (
-    (status = 'ACTIVE' AND ends_at IS NULL)
+    (status = 'ACTIVE' AND (ends_at IS NULL OR ends_at > starts_at))
+    OR (status = 'SCHEDULED' AND ends_at IS NULL)
     OR (status = 'ENDED' AND ends_at IS NOT NULL AND ends_at >= starts_at)
   )
 );
@@ -73,6 +74,9 @@ CREATE TABLE public.member_streak_rules (
 CREATE UNIQUE INDEX idx_member_streak_rules_one_active
   ON public.member_streak_rules (gym_id, gym_member_id)
   WHERE status = 'ACTIVE';
+CREATE UNIQUE INDEX idx_member_streak_rules_one_scheduled
+  ON public.member_streak_rules (gym_id, gym_member_id)
+  WHERE status = 'SCHEDULED';
 CREATE INDEX idx_member_streak_rules_member ON public.member_streak_rules(gym_id, gym_member_id);
 CREATE INDEX idx_member_streak_rules_rule ON public.member_streak_rules(gym_id, streak_rule_id);
 
@@ -262,7 +266,9 @@ CREATE OR REPLACE FUNCTION private.create_member_streak_rule_assignment(
   p_gym_member_id UUID,
   p_streak_rule_id UUID,
   p_starts_at TIMESTAMPTZ,
-  p_actor UUID
+  p_status public.member_streak_rule_status,
+  p_actor UUID,
+  p_grant_initial_freezes BOOLEAN
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = pg_catalog, public
 AS $$
@@ -270,7 +276,12 @@ DECLARE
   v_member public.gym_members%ROWTYPE;
   v_rule public.streak_rules%ROWTYPE;
   v_assignment_id UUID;
+  v_projection_rows INTEGER := 0;
 BEGIN
+  IF p_status NOT IN ('ACTIVE', 'SCHEDULED') THEN
+    RAISE EXCEPTION 'Unsupported streak rule assignment status' USING ERRCODE = '22023';
+  END IF;
+
   SELECT * INTO v_member FROM public.gym_members
   WHERE id = p_gym_member_id AND gym_id = p_gym_id AND status = 'ACTIVE'
   FOR SHARE;
@@ -293,18 +304,19 @@ BEGIN
     period_type, week_starts_on, timezone, starts_at, status, assigned_by
   ) VALUES (
     p_gym_id, p_gym_member_id, p_streak_rule_id, v_rule.target_days, v_rule.max_freezes,
-    v_rule.period_type, v_rule.week_starts_on, v_rule.timezone, p_starts_at, 'ACTIVE', p_actor
+    v_rule.period_type, v_rule.week_starts_on, v_rule.timezone, p_starts_at, p_status, p_actor
   ) RETURNING id INTO v_assignment_id;
 
   INSERT INTO public.member_streaks (
     gym_id, gym_member_id, current_streak, best_streak, freezes_available, version
   ) VALUES (
-    p_gym_id, p_gym_member_id, 0, 0, v_rule.max_freezes, 0
-  ) ON CONFLICT (gym_id, gym_member_id) DO UPDATE SET
-    freezes_available = public.member_streaks.freezes_available + EXCLUDED.freezes_available,
-    version = public.member_streaks.version + 1;
+    p_gym_id, p_gym_member_id, 0, 0,
+    CASE WHEN p_grant_initial_freezes THEN v_rule.max_freezes ELSE 0 END,
+    0
+  ) ON CONFLICT (gym_id, gym_member_id) DO NOTHING;
+  GET DIAGNOSTICS v_projection_rows = ROW_COUNT;
 
-  IF v_rule.max_freezes > 0 THEN
+  IF p_grant_initial_freezes AND v_projection_rows = 1 AND v_rule.max_freezes > 0 THEN
     INSERT INTO public.streak_freeze_transactions (
       gym_id, gym_member_id, transaction_type, amount, reason, created_by, metadata
     ) VALUES (
@@ -337,14 +349,14 @@ REVOKE ALL ON FUNCTION private.validate_streak_rule_config() FROM PUBLIC;
 REVOKE ALL ON FUNCTION private.validate_member_streak_rule_snapshot() FROM PUBLIC;
 REVOKE ALL ON FUNCTION private.validate_streak_period_snapshot() FROM PUBLIC;
 REVOKE ALL ON FUNCTION private.validate_streak_freeze_transaction() FROM PUBLIC;
-REVOKE ALL ON FUNCTION private.create_member_streak_rule_assignment(UUID, UUID, UUID, TIMESTAMPTZ, UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION private.create_member_streak_rule_assignment(UUID, UUID, UUID, TIMESTAMPTZ, public.member_streak_rule_status, UUID, BOOLEAN) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION private.is_valid_timezone(TEXT) TO postgres, service_role;
 GRANT EXECUTE ON FUNCTION private.next_monday_boundary(TIMESTAMPTZ, TEXT) TO postgres, service_role;
 GRANT EXECUTE ON FUNCTION private.validate_streak_rule_config() TO postgres, service_role;
 GRANT EXECUTE ON FUNCTION private.validate_member_streak_rule_snapshot() TO postgres, service_role;
 GRANT EXECUTE ON FUNCTION private.validate_streak_period_snapshot() TO postgres, service_role;
 GRANT EXECUTE ON FUNCTION private.validate_streak_freeze_transaction() TO postgres, service_role;
-GRANT EXECUTE ON FUNCTION private.create_member_streak_rule_assignment(UUID, UUID, UUID, TIMESTAMPTZ, UUID) TO postgres, service_role;
+GRANT EXECUTE ON FUNCTION private.create_member_streak_rule_assignment(UUID, UUID, UUID, TIMESTAMPTZ, public.member_streak_rule_status, UUID, BOOLEAN) TO postgres, service_role;
 
 ALTER TABLE public.streak_rules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.streak_rules FORCE ROW LEVEL SECURITY;
@@ -488,13 +500,13 @@ BEGIN
   v_actor := private.assert_gym_admin(p_gym_id);
   IF EXISTS (
     SELECT 1 FROM public.member_streak_rules
-    WHERE gym_id = p_gym_id AND gym_member_id = p_gym_member_id AND status = 'ACTIVE'
+    WHERE gym_id = p_gym_id AND gym_member_id = p_gym_member_id AND status IN ('ACTIVE', 'SCHEDULED')
     FOR UPDATE
   ) THEN
     RAISE EXCEPTION 'Gym member already has an active streak rule assignment' USING ERRCODE = '23505';
   END IF;
   v_id := private.create_member_streak_rule_assignment(
-    p_gym_id, p_gym_member_id, p_streak_rule_id, clock_timestamp(), v_actor
+    p_gym_id, p_gym_member_id, p_streak_rule_id, clock_timestamp(), 'ACTIVE', v_actor, TRUE
   );
   RETURN v_id;
 END;
@@ -523,14 +535,21 @@ BEGIN
   IF v_current.streak_rule_id = p_new_streak_rule_id THEN
     RAISE EXCEPTION 'Member already uses this streak rule' USING ERRCODE = '22023';
   END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.member_streak_rules
+    WHERE gym_id = p_gym_id AND gym_member_id = p_gym_member_id AND status = 'SCHEDULED'
+    FOR UPDATE
+  ) THEN
+    RAISE EXCEPTION 'Gym member already has a scheduled streak rule assignment' USING ERRCODE = '23505';
+  END IF;
 
   v_boundary := private.next_monday_boundary(clock_timestamp(), v_current.timezone);
   UPDATE public.member_streak_rules
-  SET status = 'ENDED', ends_at = v_boundary
+  SET ends_at = v_boundary
   WHERE id = v_current.id;
 
   v_id := private.create_member_streak_rule_assignment(
-    p_gym_id, p_gym_member_id, p_new_streak_rule_id, v_boundary, v_actor
+    p_gym_id, p_gym_member_id, p_new_streak_rule_id, v_boundary, 'SCHEDULED', v_actor, FALSE
   );
   RETURN v_id;
 END;

@@ -9,16 +9,21 @@ INSERT INTO auth.users (
   id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_app_meta_data, raw_user_meta_data, created_at, updated_at
 ) VALUES
-  ('66666666-6666-6666-6666-666666666666', 'authenticated', 'authenticated', 'member-a2@ytufit.local', crypt('Password123!', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Member","last_name":"Alpha Two"}', now(), now())
+  ('66666666-6666-6666-6666-666666666666', 'authenticated', 'authenticated', 'member-a2@ytufit.local', crypt('Password123!', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Member","last_name":"Alpha Two"}', now(), now()),
+  ('88888888-8888-8888-8888-888888888888', 'authenticated', 'authenticated', 'member-a3@ytufit.local', crypt('Password123!', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Member","last_name":"Alpha Three"}', now(), now())
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.profiles (id, first_name, last_name, status) VALUES
-  ('66666666-6666-6666-6666-666666666666', 'Member', 'Alpha Two', 'ACTIVE')
+  ('66666666-6666-6666-6666-666666666666', 'Member', 'Alpha Two', 'ACTIVE'),
+  ('88888888-8888-8888-8888-888888888888', 'Member', 'Alpha Three', 'ACTIVE')
 ON CONFLICT (id) DO UPDATE SET first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name, status = EXCLUDED.status;
 INSERT INTO public.gym_members (id, gym_id, user_id, status) VALUES
-  ('ffffffff-ffff-ffff-ffff-ffffffff0001', '00000000-0000-0000-0000-000000000001', '66666666-6666-6666-6666-666666666666', 'ACTIVE')
+  ('ffffffff-ffff-ffff-ffff-ffffffff0001', '00000000-0000-0000-0000-000000000001', '66666666-6666-6666-6666-666666666666', 'ACTIVE'),
+  ('ffffffff-ffff-ffff-ffff-ffffffff0003', '00000000-0000-0000-0000-000000000001', '88888888-8888-8888-8888-888888888888', 'ACTIVE')
 ON CONFLICT (gym_id, user_id) DO NOTHING;
 INSERT INTO public.gym_member_roles (gym_member_id, role_id)
 SELECT 'ffffffff-ffff-ffff-ffff-ffffffff0001'::uuid, r.id FROM public.roles r WHERE r.name = 'MEMBER'
+UNION ALL
+SELECT 'ffffffff-ffff-ffff-ffff-ffffffff0003'::uuid, r.id FROM public.roles r WHERE r.name = 'MEMBER'
 ON CONFLICT (gym_member_id, role_id) DO NOTHING;
 
 -- Schema surface.
@@ -30,6 +35,7 @@ SELECT has_table('public', 'member_streaks', 'member_streaks table exists');
 SELECT isnt(to_regtype('public.streak_period_type'), NULL::regtype, 'streak_period_type enum exists');
 SELECT isnt(to_regtype('public.streak_rule_status'), NULL::regtype, 'streak_rule_status enum exists');
 SELECT isnt(to_regtype('public.member_streak_rule_status'), NULL::regtype, 'member_streak_rule_status enum exists');
+SELECT results_eq($$ SELECT enumlabel FROM pg_enum WHERE enumtypid = 'public.member_streak_rule_status'::regtype ORDER BY enumsortorder $$, $$ VALUES ('ACTIVE'::name), ('SCHEDULED'::name), ('ENDED'::name) $$, 'Member streak rule status includes ACTIVE, SCHEDULED, and ENDED');
 SELECT isnt(to_regtype('public.streak_period_status'), NULL::regtype, 'streak_period_status enum exists');
 SELECT isnt(to_regtype('public.streak_freeze_transaction_type'), NULL::regtype, 'streak_freeze_transaction_type enum exists');
 SELECT isnt(to_regtype('public.streak_period_eligibility_reason'), NULL::regtype, 'streak_period_eligibility_reason enum exists');
@@ -44,6 +50,7 @@ SELECT ok(public.update_streak_rule((SELECT id FROM public.streak_rules WHERE na
 SELECT results_eq($$ SELECT name, target_days, max_freezes, timezone FROM public.streak_rules WHERE name = 'Core 3 updated' $$, $$ VALUES ('Core 3 updated'::text, 4::smallint, 1::smallint, 'America/Argentina/Buenos_Aires'::text) $$, 'Rule update persists edited fields');
 SELECT throws_ok($$ SELECT public.update_streak_rule((SELECT id FROM public.streak_rules WHERE name = 'Core 3 updated'), 'Bad archive via update', 4, 1, 'America/Montevideo', 'ARCHIVED') $$, '22023', NULL, 'Rules cannot be archived through update_streak_rule');
 SELECT ok(public.create_streak_rule('00000000-0000-0000-0000-000000000001', 'Core 5', 5, 0, 'America/Montevideo') IS NOT NULL, 'Gym Admin creates replacement rule');
+SELECT ok(public.create_streak_rule('00000000-0000-0000-0000-000000000001', 'Core 2 Freeze', 2, 2, 'America/Montevideo') IS NOT NULL, 'Gym Admin creates higher-freeze replacement rule');
 SELECT ok(public.create_streak_rule('00000000-0000-0000-0000-000000000001', 'Temporary archive', 2, 1, 'America/Montevideo') IS NOT NULL, 'Gym Admin creates archive candidate');
 SELECT ok(public.archive_streak_rule((SELECT id FROM public.streak_rules WHERE name = 'Temporary archive')) IS NOT NULL, 'Gym Admin archives a rule');
 SELECT results_eq($$ SELECT status, deleted_at IS NOT NULL FROM public.streak_rules WHERE name = 'Temporary archive' $$, $$ VALUES ('ARCHIVED'::public.streak_rule_status, true) $$, 'Archived rule is soft-deleted');
@@ -73,10 +80,35 @@ SELECT throws_ok($$ SELECT public.assign_member_streak_rule('00000000-0000-0000-
 SELECT throws_ok($$ SELECT public.assign_member_streak_rule('00000000-0000-0000-0000-000000000001', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', (SELECT id FROM public.streak_rules WHERE name = 'Core 5')) $$, 'P0002', NULL, 'Gym Admin cannot assign a member from another tenant');
 SELECT ok(public.change_member_streak_rule('00000000-0000-0000-0000-000000000001', 'cccccccc-cccc-cccc-cccc-cccccccccccc', (SELECT id FROM public.streak_rules WHERE name = 'Core 5')) IS NOT NULL, 'Gym Admin schedules a member rule change on the next weekly boundary');
 SELECT results_eq($$ SELECT count(*)::integer FROM public.member_streak_rules WHERE gym_member_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc' AND status = 'ACTIVE' $$, $$ VALUES (1) $$, 'Rule change keeps exactly one active assignment');
-SELECT results_eq($$ SELECT target_days, max_freezes FROM public.member_streak_rules WHERE gym_member_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc' AND status = 'ACTIVE' $$, $$ VALUES (5::smallint, 0::smallint) $$, 'New active assignment snapshots replacement rule');
-SELECT results_eq($$ SELECT target_days, max_freezes FROM public.member_streak_rules WHERE gym_member_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc' AND status = 'ENDED' $$, $$ VALUES (4::smallint, 1::smallint) $$, 'Ended assignment keeps the original snapshot');
-SELECT isnt((SELECT ends_at FROM public.member_streak_rules WHERE gym_member_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc' AND status = 'ENDED'), NULL::timestamptz, 'Ended assignment has an explicit boundary');
-SELECT throws_ok($$ SELECT public.change_member_streak_rule('00000000-0000-0000-0000-000000000001', 'cccccccc-cccc-cccc-cccc-cccccccccccc', (SELECT id FROM public.streak_rules WHERE name = 'Core 5')) $$, '22023', NULL, 'Changing to the current active rule is rejected');
+SELECT results_eq($$ SELECT count(*)::integer FROM public.member_streak_rules WHERE gym_member_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc' AND status = 'SCHEDULED' $$, $$ VALUES (1) $$, 'Rule change creates exactly one scheduled successor');
+SELECT results_eq($$ SELECT target_days, max_freezes FROM public.member_streak_rules WHERE gym_member_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc' AND status = 'SCHEDULED' $$, $$ VALUES (5::smallint, 0::smallint) $$, 'Scheduled assignment snapshots replacement rule');
+SELECT results_eq($$ SELECT target_days, max_freezes FROM public.member_streak_rules WHERE gym_member_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc' AND status = 'ACTIVE' $$, $$ VALUES (4::smallint, 1::smallint) $$, 'Current active assignment keeps the original snapshot');
+SELECT results_eq($$ SELECT active.ends_at = scheduled.starts_at, active.starts_at <= clock_timestamp(), active.ends_at > clock_timestamp(), scheduled.starts_at > clock_timestamp(), EXTRACT(ISODOW FROM scheduled.starts_at AT TIME ZONE scheduled.timezone)::integer FROM public.member_streak_rules active JOIN public.member_streak_rules scheduled ON scheduled.gym_id = active.gym_id AND scheduled.gym_member_id = active.gym_member_id WHERE active.gym_member_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc' AND active.status = 'ACTIVE' AND scheduled.status = 'SCHEDULED' $$, $$ VALUES (true, true, true, true, 1) $$, 'Friday rule change keeps old rule effective and schedules replacement for next Monday boundary');
+SELECT is_empty($$ SELECT * FROM public.member_streak_rules WHERE gym_member_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc' AND status = 'SCHEDULED' AND starts_at <= clock_timestamp() $$, 'Scheduled successor is not currently effective before the boundary');
+SELECT throws_ok($$ SELECT public.change_member_streak_rule('00000000-0000-0000-0000-000000000001', 'cccccccc-cccc-cccc-cccc-cccccccccccc', (SELECT id FROM public.streak_rules WHERE name = 'Core 3 updated')) $$, '22023', NULL, 'Changing to the current active rule is rejected');
+SELECT throws_ok($$ SELECT public.change_member_streak_rule('00000000-0000-0000-0000-000000000001', 'cccccccc-cccc-cccc-cccc-cccccccccccc', (SELECT id FROM public.streak_rules WHERE name = 'Core 2 Freeze')) $$, '23505', NULL, 'A second scheduled successor is rejected');
+SELECT results_eq($$ SELECT count(*)::integer FROM public.streak_freeze_transactions WHERE gym_member_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc' AND transaction_type = 'GRANT' $$, $$ VALUES (1) $$, 'Repeated rule changes cannot farm freeze GRANT transactions');
+SELECT ok(public.assign_member_streak_rule('00000000-0000-0000-0000-000000000001', 'ffffffff-ffff-ffff-ffff-ffffffff0001', (SELECT id FROM public.streak_rules WHERE name = 'Core 3 updated')) IS NOT NULL, 'Gym Admin initially assigns one-freeze rule to Member A2');
+SELECT results_eq($$ SELECT freezes_available, current_streak, best_streak FROM public.member_streaks WHERE gym_member_id = 'ffffffff-ffff-ffff-ffff-ffffffff0001' $$, $$ VALUES (1::smallint, 0, 0) $$, 'Initial assignment grants one freeze and initializes streak counters');
+SELECT ok(public.change_member_streak_rule('00000000-0000-0000-0000-000000000001', 'ffffffff-ffff-ffff-ffff-ffffffff0001', (SELECT id FROM public.streak_rules WHERE name = 'Core 2 Freeze')) IS NOT NULL, 'Gym Admin changes Member A2 to a higher-freeze rule');
+SELECT results_eq($$ SELECT count(*)::integer FROM public.streak_freeze_transactions WHERE gym_member_id = 'ffffffff-ffff-ffff-ffff-ffffffff0001' AND transaction_type = 'GRANT' $$, $$ VALUES (1) $$, 'Rule change to higher max_freezes creates no extra GRANT');
+SELECT results_eq($$ SELECT freezes_available, current_streak, best_streak FROM public.member_streaks WHERE gym_member_id = 'ffffffff-ffff-ffff-ffff-ffffffff0001' $$, $$ VALUES (1::smallint, 0, 0) $$, 'Rule change preserves freeze balance and streak counters');
+
+SET LOCAL ROLE postgres;
+RESET "request.jwt.claims";
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated","email":"admin-a@ytufit.local"}';
+SELECT ok(public.assign_member_streak_rule('00000000-0000-0000-0000-000000000001', 'ffffffff-ffff-ffff-ffff-ffffffff0003', (SELECT id FROM public.streak_rules WHERE name = 'Core 3 updated')) IS NOT NULL, 'Gym Admin initially assigns one-freeze rule to Member A3');
+SET LOCAL ROLE postgres;
+RESET "request.jwt.claims";
+UPDATE public.member_streaks SET freezes_available = 0 WHERE gym_member_id = 'ffffffff-ffff-ffff-ffff-ffffffff0003';
+INSERT INTO public.streak_freeze_transactions (gym_id, gym_member_id, transaction_type, amount, reason, created_by)
+VALUES ('00000000-0000-0000-0000-000000000001', 'ffffffff-ffff-ffff-ffff-ffffffff0003', 'CONSUME', 1, 'fixture consume after initial grant', '11111111-1111-1111-1111-111111111111');
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated","email":"admin-a@ytufit.local"}';
+SELECT ok(public.change_member_streak_rule('00000000-0000-0000-0000-000000000001', 'ffffffff-ffff-ffff-ffff-ffffffff0003', (SELECT id FROM public.streak_rules WHERE name = 'Core 2 Freeze')) IS NOT NULL, 'Gym Admin changes Member A3 after freezes are consumed');
+SELECT results_eq($$ SELECT freezes_available, current_streak, best_streak FROM public.member_streaks WHERE gym_member_id = 'ffffffff-ffff-ffff-ffff-ffffffff0003' $$, $$ VALUES (0::smallint, 0, 0) $$, 'Rule change does not restore consumed freezes or reset streak counters');
+SELECT results_eq($$ SELECT count(*)::integer FROM public.streak_freeze_transactions WHERE gym_member_id = 'ffffffff-ffff-ffff-ffff-ffffffff0003' AND transaction_type = 'GRANT' $$, $$ VALUES (1) $$, 'Consumed member rule change creates no additional GRANT');
 
 -- DB invariants and privileged fixture creation for RLS reads.
 SET LOCAL ROLE postgres;
@@ -85,16 +117,12 @@ INSERT INTO public.streak_rules (id, gym_id, name, target_days, max_freezes, tim
 VALUES ('70000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002', 'Beta Core', 3, 1, 'America/Montevideo', '44444444-4444-4444-4444-444444444444');
 INSERT INTO public.member_streak_rules (id, gym_id, gym_member_id, streak_rule_id, target_days, max_freezes, period_type, week_starts_on, timezone, starts_at, assigned_by)
 VALUES ('71000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', '70000000-0000-0000-0000-000000000001', 3, 1, 'WEEK', 1, 'America/Montevideo', '2026-09-07 00:00:00+00', '44444444-4444-4444-4444-444444444444');
-INSERT INTO public.member_streak_rules (id, gym_id, gym_member_id, streak_rule_id, target_days, max_freezes, period_type, week_starts_on, timezone, starts_at, assigned_by)
-VALUES ('71000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'ffffffff-ffff-ffff-ffff-ffffffff0001', (SELECT id FROM public.streak_rules WHERE name = 'Core 5'), 5, 0, 'WEEK', 1, 'America/Montevideo', '2026-09-07 00:00:00+00', '11111111-1111-1111-1111-111111111111');
-INSERT INTO public.member_streaks (id, gym_id, gym_member_id, freezes_available)
-VALUES ('72000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'ffffffff-ffff-ffff-ffff-ffffffff0001', 0);
 INSERT INTO public.member_streaks (id, gym_id, gym_member_id, freezes_available)
 VALUES ('72000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 1);
 INSERT INTO public.streak_periods (id, gym_id, gym_member_id, member_streak_rule_id, period_start, period_end, timezone_snapshot, target_days_snapshot, status)
 VALUES
   ('73000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'cccccccc-cccc-cccc-cccc-cccccccccccc', (SELECT id FROM public.member_streak_rules WHERE gym_member_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc' AND status = 'ACTIVE'), '2026-09-07', '2026-09-13', 'America/Montevideo', 5, 'OPEN'),
-  ('73000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'ffffffff-ffff-ffff-ffff-ffffffff0001', '71000000-0000-0000-0000-000000000002', '2026-09-14', '2026-09-20', 'America/Montevideo', 5, 'OPEN') ON CONFLICT DO NOTHING;
+  ('73000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000002', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', '71000000-0000-0000-0000-000000000001', '2026-09-14', '2026-09-20', 'America/Montevideo', 3, 'OPEN') ON CONFLICT DO NOTHING;
 SELECT throws_ok($$ INSERT INTO public.streak_rules (gym_id, name, target_days, max_freezes, timezone, created_by) VALUES ('00000000-0000-0000-0000-000000000001', 'Bad target low', 0, 1, 'America/Montevideo', '11111111-1111-1111-1111-111111111111') $$, '23514', NULL, 'target_days lower bound is enforced');
 SELECT throws_ok($$ INSERT INTO public.streak_rules (gym_id, name, target_days, max_freezes, timezone, created_by) VALUES ('00000000-0000-0000-0000-000000000001', 'Bad target high', 8, 1, 'America/Montevideo', '11111111-1111-1111-1111-111111111111') $$, '23514', NULL, 'target_days upper bound is enforced');
 SELECT throws_ok($$ INSERT INTO public.streak_rules (gym_id, name, target_days, max_freezes, timezone, created_by) VALUES ('00000000-0000-0000-0000-000000000001', 'Bad freeze low', 3, -1, 'America/Montevideo', '11111111-1111-1111-1111-111111111111') $$, '23514', NULL, 'max_freezes lower bound is enforced');
@@ -103,6 +131,8 @@ SELECT throws_ok($$ INSERT INTO public.streak_rules (gym_id, name, target_days, 
 SELECT throws_ok($$ INSERT INTO public.streak_rules (gym_id, name, target_days, max_freezes, timezone, created_by) VALUES ('00000000-0000-0000-0000-000000000001', 'Bad timezone', 3, 1, 'Mars/Base', '11111111-1111-1111-1111-111111111111') $$, '22023', NULL, 'Invalid timezones are rejected');
 SELECT throws_ok($$ INSERT INTO public.member_streak_rules (gym_id, gym_member_id, streak_rule_id, target_days, max_freezes, period_type, week_starts_on, timezone, starts_at, assigned_by) VALUES ('00000000-0000-0000-0000-000000000001', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', (SELECT id FROM public.streak_rules WHERE name = 'Core 5'), 5, 0, 'WEEK', 1, 'America/Montevideo', now(), '11111111-1111-1111-1111-111111111111') $$, '23503', NULL, 'Member streak assignment enforces member tenant');
 SELECT throws_ok($$ INSERT INTO public.member_streak_rules (gym_id, gym_member_id, streak_rule_id, target_days, max_freezes, period_type, week_starts_on, timezone, starts_at, assigned_by) VALUES ('00000000-0000-0000-0000-000000000002', 'dddddddd-dddd-dddd-dddd-dddddddddddd', (SELECT id FROM public.streak_rules WHERE name = 'Core 5'), 5, 0, 'WEEK', 1, 'America/Montevideo', now(), '44444444-4444-4444-4444-444444444444') $$, '23503', NULL, 'Member streak assignment enforces rule tenant');
+SELECT throws_ok($$ INSERT INTO public.member_streak_rules (gym_id, gym_member_id, streak_rule_id, target_days, max_freezes, period_type, week_starts_on, timezone, starts_at, status, assigned_by) VALUES ('00000000-0000-0000-0000-000000000001', 'cccccccc-cccc-cccc-cccc-cccccccccccc', (SELECT id FROM public.streak_rules WHERE name = 'Core 2 Freeze'), 2, 2, 'WEEK', 1, 'America/Montevideo', now() + interval '8 days', 'SCHEDULED', '11111111-1111-1111-1111-111111111111') $$, '23505', NULL, 'DB rejects a second scheduled successor for one member');
+SELECT throws_ok($$ INSERT INTO public.member_streak_rules (gym_id, gym_member_id, streak_rule_id, target_days, max_freezes, period_type, week_starts_on, timezone, starts_at, ends_at, status, assigned_by) VALUES ('00000000-0000-0000-0000-000000000002', 'dddddddd-dddd-dddd-dddd-dddddddddddd', '70000000-0000-0000-0000-000000000001', 2, 2, 'WEEK', 1, 'America/Montevideo', now() + interval '8 days', now() + interval '9 days', 'SCHEDULED', '44444444-4444-4444-4444-444444444444') $$, '23514', NULL, 'SCHEDULED assignments cannot carry an ends_at boundary');
 SELECT throws_ok($$ INSERT INTO public.streak_periods (gym_id, gym_member_id, member_streak_rule_id, period_start, period_end, timezone_snapshot, target_days_snapshot, status) VALUES ('00000000-0000-0000-0000-000000000001', 'cccccccc-cccc-cccc-cccc-cccccccccccc', (SELECT id FROM public.member_streak_rules WHERE gym_member_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc' AND status = 'ACTIVE'), '2026-09-07', '2026-09-12', 'America/Montevideo', 5, 'OPEN') $$, '23514', NULL, 'Streak periods are constrained to full weeks');
 SELECT throws_ok($$ INSERT INTO public.streak_periods (gym_id, gym_member_id, member_streak_rule_id, period_start, period_end, timezone_snapshot, target_days_snapshot, status, eligibility_reason) VALUES ('00000000-0000-0000-0000-000000000001', 'cccccccc-cccc-cccc-cccc-cccccccccccc', (SELECT id FROM public.member_streak_rules WHERE gym_member_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc' AND status = 'ACTIVE'), '2026-09-21', '2026-09-27', 'America/Montevideo', 5, 'OPEN', 'STREAK_NOT_ENABLED') $$, '23514', NULL, 'OPEN periods cannot carry ineligible reason');
 SELECT throws_ok($$ INSERT INTO public.streak_periods (gym_id, gym_member_id, member_streak_rule_id, period_start, period_end, timezone_snapshot, target_days_snapshot, status, finalized_at) VALUES ('00000000-0000-0000-0000-000000000001', 'cccccccc-cccc-cccc-cccc-cccccccccccc', (SELECT id FROM public.member_streak_rules WHERE gym_member_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc' AND status = 'ACTIVE'), '2026-09-28', '2026-10-04', 'America/Montevideo', 5, 'NOT_ELIGIBLE', now()) $$, '23514', NULL, 'NOT_ELIGIBLE periods require an eligibility reason');
@@ -121,7 +151,7 @@ SET LOCAL ROLE authenticated;
 SET LOCAL "request.jwt.claims" = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated","email":"trainer-a@ytufit.local"}';
 SELECT results_eq($$ SELECT count(*)::integer FROM public.member_streaks WHERE gym_member_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc' $$, $$ VALUES (1) $$, 'Trainer reads assigned member projection');
 SELECT results_eq($$ SELECT count(*)::integer FROM public.streak_periods WHERE gym_member_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc' $$, $$ VALUES (1) $$, 'Trainer reads assigned member periods');
-SELECT is_empty($$ SELECT * FROM public.streak_periods WHERE gym_member_id = 'ffffffff-ffff-ffff-ffff-ffffffff0001' $$, 'Trainer cannot read unassigned member periods');
+SELECT is_empty($$ SELECT * FROM public.streak_periods WHERE gym_member_id = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee' $$, 'Trainer cannot read unauthorized tenant periods');
 SELECT is_empty($$ SELECT * FROM public.streak_freeze_transactions WHERE gym_member_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc' $$, 'Trainer cannot read member freeze ledger');
 SET LOCAL ROLE authenticated;
 SET LOCAL "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated","email":"admin-a@ytufit.local"}';
