@@ -210,6 +210,10 @@ export const createTrainerMemberAssignmentSchema = z.object({
   memberGymMemberId: z.uuid(),
 });
 
+export const deactivateTrainerMemberAssignmentSchema = z.object({
+  assignmentId: z.uuid(),
+});
+
 export type CreateGymExerciseInput = z.infer<typeof createGymExerciseSchema>;
 export type UpdateGymExerciseInput = z.infer<typeof updateGymExerciseSchema>;
 export type ArchiveGymExerciseInput = z.infer<typeof archiveGymExerciseSchema>;
@@ -239,4 +243,7 @@ export type CancelRoutineAssignmentInput = z.infer<
 >;
 export type CreateTrainerMemberAssignmentInput = z.infer<
   typeof createTrainerMemberAssignmentSchema
+>;
+export type DeactivateTrainerMemberAssignmentInput = z.infer<
+  typeof deactivateTrainerMemberAssignmentSchema
 >;

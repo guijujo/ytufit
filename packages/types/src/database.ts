@@ -1251,6 +1251,14 @@ export type Database = {
         };
         Returns: string;
       };
+      deactivate_trainer_member_assignment: {
+        Args: { p_assignment_id: string };
+        Returns: string;
+      };
+      deactivateTrainerMemberAssignment: {
+        Args: { p_assignment_id: string };
+        Returns: string;
+      };
       register_attendance: {
         Args: {
           p_gym_member_id: string;

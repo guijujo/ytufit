@@ -195,7 +195,6 @@ AS $$
     JOIN public.gym_members gm ON gm.id = ra.gym_member_id AND gm.gym_id = ra.gym_id
     WHERE ra.gym_id = p_gym_id
       AND ra.routine_id = p_routine_id
-      AND ra.status = 'ACTIVE'
       AND gm.user_id = (SELECT auth.uid())
       AND gm.status = 'ACTIVE'
   );
@@ -327,6 +326,36 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.deactivate_trainer_member_assignment(
+  p_assignment_id UUID
+) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE v_assignment public.trainer_member_assignments%ROWTYPE; v_id UUID;
+BEGIN
+  IF (SELECT auth.uid()) IS NULL THEN
+    RAISE EXCEPTION 'Authentication required' USING ERRCODE = '42501';
+  END IF;
+  SELECT * INTO v_assignment
+  FROM public.trainer_member_assignments
+  WHERE id = p_assignment_id
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Trainer-member assignment not found' USING ERRCODE = 'P0002';
+  END IF;
+  IF NOT private.has_gym_role(v_assignment.gym_id, 'GYM_ADMIN') THEN
+    RAISE EXCEPTION 'Gym administrator authorization required' USING ERRCODE = '42501';
+  END IF;
+  IF v_assignment.status <> 'ACTIVE' THEN
+    RAISE EXCEPTION 'Trainer-member assignment is already inactive' USING ERRCODE = '55000';
+  END IF;
+  UPDATE public.trainer_member_assignments
+  SET status = 'INACTIVE', ended_at = clock_timestamp()
+  WHERE id = p_assignment_id
+  RETURNING id INTO v_id;
+  RETURN v_id;
+END;
+$$;
 CREATE OR REPLACE FUNCTION public.create_routine(
   p_gym_id UUID,
   p_name TEXT,
@@ -646,6 +675,9 @@ AS $$ SELECT public.cancel_routine_assignment($1,$2,$3) $$;
 CREATE OR REPLACE FUNCTION public."createTrainerMemberAssignment"(p_gym_id UUID, p_trainer_gym_member_id UUID, p_member_gym_member_id UUID)
 RETURNS UUID LANGUAGE sql SECURITY DEFINER SET search_path = pg_catalog, public
 AS $$ SELECT public.create_trainer_member_assignment($1,$2,$3) $$;
+CREATE OR REPLACE FUNCTION public."deactivateTrainerMemberAssignment"(p_assignment_id UUID)
+RETURNS UUID LANGUAGE sql SECURITY DEFINER SET search_path = pg_catalog, public
+AS $$ SELECT public.deactivate_trainer_member_assignment($1) $$;
 
 DO $$
 DECLARE f RECORD;
@@ -656,6 +688,7 @@ BEGIN
     WHERE n.nspname = 'public'
       AND p.proname IN (
         'create_trainer_member_assignment', 'createTrainerMemberAssignment',
+        'deactivate_trainer_member_assignment', 'deactivateTrainerMemberAssignment',
         'create_routine', 'update_routine', 'archive_routine',
         'add_routine_exercise', 'update_routine_exercise', 'remove_routine_exercise',
         'reorder_routine_exercises', 'assign_routine', 'complete_routine_assignment',
