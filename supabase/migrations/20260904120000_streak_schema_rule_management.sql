@@ -87,6 +87,8 @@ CREATE TABLE public.streak_periods (
   member_streak_rule_id UUID NOT NULL,
   period_start DATE NOT NULL,
   period_end DATE NOT NULL,
+  period_start_at TIMESTAMPTZ NOT NULL,
+  period_end_at TIMESTAMPTZ NOT NULL,
   timezone_snapshot TEXT NOT NULL CHECK (length(btrim(timezone_snapshot)) > 0),
   target_days_snapshot SMALLINT NOT NULL CHECK (target_days_snapshot BETWEEN 1 AND 7),
   valid_days SMALLINT NOT NULL DEFAULT 0 CHECK (valid_days BETWEEN 0 AND 7),
@@ -104,6 +106,7 @@ CREATE TABLE public.streak_periods (
   CONSTRAINT streak_periods_member_rule_fk FOREIGN KEY (member_streak_rule_id, gym_id, gym_member_id)
     REFERENCES public.member_streak_rules (id, gym_id, gym_member_id) ON DELETE RESTRICT,
   CONSTRAINT streak_periods_week_length_check CHECK (period_end = period_start + 6),
+  CONSTRAINT streak_periods_bounds_order_check CHECK (period_end_at > period_start_at),
   CONSTRAINT streak_periods_not_eligible_reason_check CHECK (
     (status = 'NOT_ELIGIBLE' AND eligibility_reason IS NOT NULL)
     OR (status <> 'NOT_ELIGIBLE' AND eligibility_reason IS NULL)
@@ -128,6 +131,7 @@ CREATE TABLE public.streak_freeze_transactions (
   amount SMALLINT NOT NULL CHECK (amount > 0),
   reason TEXT NULL CHECK (reason IS NULL OR length(btrim(reason)) > 0),
   source_transaction_id UUID NULL REFERENCES public.streak_freeze_transactions(id) ON DELETE RESTRICT,
+  reversed_by_transaction_id UUID NULL REFERENCES public.streak_freeze_transactions(id) ON DELETE RESTRICT,
   created_by UUID NULL REFERENCES auth.users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
   metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
@@ -139,12 +143,17 @@ CREATE TABLE public.streak_freeze_transactions (
   CONSTRAINT streak_freeze_transactions_restore_source_check CHECK (
     (transaction_type = 'RESTORE' AND source_transaction_id IS NOT NULL)
     OR (transaction_type <> 'RESTORE')
+  ),
+  CONSTRAINT streak_freeze_transactions_reversal_check CHECK (
+    transaction_type = 'CONSUME' OR reversed_by_transaction_id IS NULL
   )
 );
 
-CREATE UNIQUE INDEX idx_streak_freeze_one_consume_per_period
+CREATE UNIQUE INDEX idx_streak_freeze_one_effective_consume_per_period
   ON public.streak_freeze_transactions (gym_id, gym_member_id, streak_period_id)
-  WHERE transaction_type = 'CONSUME' AND streak_period_id IS NOT NULL;
+  WHERE transaction_type = 'CONSUME'
+    AND streak_period_id IS NOT NULL
+    AND reversed_by_transaction_id IS NULL;
 CREATE UNIQUE INDEX idx_streak_freeze_one_restore_per_source
   ON public.streak_freeze_transactions (source_transaction_id)
   WHERE transaction_type = 'RESTORE';
@@ -238,6 +247,21 @@ BEGIN
   IF NOT private.is_valid_timezone(NEW.timezone_snapshot) THEN
     RAISE EXCEPTION 'Invalid streak period timezone snapshot' USING ERRCODE = '22023';
   END IF;
+  IF EXTRACT(ISODOW FROM NEW.period_start)::INTEGER <> 1 THEN
+    RAISE EXCEPTION 'Streak periods must start on Monday' USING ERRCODE = '22023';
+  END IF;
+  NEW.period_start_at := COALESCE(
+    NEW.period_start_at,
+    NEW.period_start::TIMESTAMP AT TIME ZONE NEW.timezone_snapshot
+  );
+  NEW.period_end_at := COALESCE(
+    NEW.period_end_at,
+    (NEW.period_end + 1)::TIMESTAMP AT TIME ZONE NEW.timezone_snapshot
+  );
+  IF (NEW.period_start_at AT TIME ZONE NEW.timezone_snapshot)::DATE <> NEW.period_start
+     OR (NEW.period_end_at AT TIME ZONE NEW.timezone_snapshot)::DATE <> NEW.period_end + 1 THEN
+    RAISE EXCEPTION 'Streak period UTC bounds must match local period dates' USING ERRCODE = '22023';
+  END IF;
   RETURN NEW;
 END;
 $$;
@@ -246,8 +270,29 @@ CREATE OR REPLACE FUNCTION private.validate_streak_freeze_transaction()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = pg_catalog, public
 AS $$
-DECLARE v_source public.streak_freeze_transactions%ROWTYPE;
+DECLARE
+  v_source public.streak_freeze_transactions%ROWTYPE;
+  v_reversal public.streak_freeze_transactions%ROWTYPE;
 BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    IF OLD.gym_id IS DISTINCT FROM NEW.gym_id
+       OR OLD.gym_member_id IS DISTINCT FROM NEW.gym_member_id
+       OR OLD.streak_period_id IS DISTINCT FROM NEW.streak_period_id
+       OR OLD.transaction_type IS DISTINCT FROM NEW.transaction_type
+       OR OLD.amount IS DISTINCT FROM NEW.amount
+       OR OLD.reason IS DISTINCT FROM NEW.reason
+       OR OLD.source_transaction_id IS DISTINCT FROM NEW.source_transaction_id
+       OR OLD.created_by IS DISTINCT FROM NEW.created_by
+       OR OLD.created_at IS DISTINCT FROM NEW.created_at
+       OR OLD.metadata IS DISTINCT FROM NEW.metadata THEN
+      RAISE EXCEPTION 'Streak freeze transaction ledger rows are immutable' USING ERRCODE = '55000';
+    END IF;
+    IF OLD.reversed_by_transaction_id IS NOT NULL
+       AND OLD.reversed_by_transaction_id IS DISTINCT FROM NEW.reversed_by_transaction_id THEN
+      RAISE EXCEPTION 'Streak freeze reversals are immutable' USING ERRCODE = '55000';
+    END IF;
+  END IF;
+
   IF NEW.transaction_type = 'RESTORE' THEN
     SELECT * INTO v_source FROM public.streak_freeze_transactions
     WHERE id = NEW.source_transaction_id FOR SHARE;
@@ -255,6 +300,23 @@ BEGIN
        OR v_source.gym_id <> NEW.gym_id
        OR v_source.gym_member_id <> NEW.gym_member_id THEN
       RAISE EXCEPTION 'RESTORE must reference a same-tenant CONSUME transaction' USING ERRCODE = '23503';
+    END IF;
+    IF v_source.reversed_by_transaction_id IS NOT NULL
+       AND v_source.reversed_by_transaction_id IS DISTINCT FROM NEW.id THEN
+      RAISE EXCEPTION 'CONSUME transaction has already been restored' USING ERRCODE = '23505';
+    END IF;
+  END IF;
+
+  IF NEW.reversed_by_transaction_id IS NOT NULL THEN
+    SELECT * INTO v_reversal FROM public.streak_freeze_transactions
+    WHERE id = NEW.reversed_by_transaction_id FOR SHARE;
+    IF NEW.transaction_type <> 'CONSUME'
+       OR NOT FOUND
+       OR v_reversal.transaction_type <> 'RESTORE'
+       OR v_reversal.source_transaction_id <> NEW.id
+       OR v_reversal.gym_id <> NEW.gym_id
+       OR v_reversal.gym_member_id <> NEW.gym_member_id THEN
+      RAISE EXCEPTION 'Reversal must point to a same-tenant RESTORE transaction' USING ERRCODE = '23503';
     END IF;
   END IF;
   RETURN NEW;

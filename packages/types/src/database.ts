@@ -1075,6 +1075,7 @@ export type Database = {
           id: string;
           metadata: Json;
           reason: string | null;
+          reversed_by_transaction_id: string | null;
           source_transaction_id: string | null;
           streak_period_id: string | null;
           transaction_type: Database['public']['Enums']['streak_freeze_transaction_type'];
@@ -1088,6 +1089,7 @@ export type Database = {
           id?: string;
           metadata?: Json;
           reason?: string | null;
+          reversed_by_transaction_id?: string | null;
           source_transaction_id?: string | null;
           streak_period_id?: string | null;
           transaction_type: Database['public']['Enums']['streak_freeze_transaction_type'];
@@ -1101,6 +1103,7 @@ export type Database = {
           id?: string;
           metadata?: Json;
           reason?: string | null;
+          reversed_by_transaction_id?: string | null;
           source_transaction_id?: string | null;
           streak_period_id?: string | null;
           transaction_type?: Database['public']['Enums']['streak_freeze_transaction_type'];
@@ -1119,6 +1122,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'streak_periods';
             referencedColumns: ['id', 'gym_id', 'gym_member_id'];
+          },
+          {
+            foreignKeyName: 'streak_freeze_transactions_reversed_by_transaction_id_fkey';
+            columns: ['reversed_by_transaction_id'];
+            isOneToOne: false;
+            referencedRelation: 'streak_freeze_transactions';
+            referencedColumns: ['id'];
           },
           {
             foreignKeyName: 'streak_freeze_transactions_source_transaction_id_fkey';
@@ -1143,7 +1153,9 @@ export type Database = {
           last_recalculated_at: string | null;
           member_streak_rule_id: string;
           period_end: string;
+          period_end_at: string;
           period_start: string;
+          period_start_at: string;
           status: Database['public']['Enums']['streak_period_status'];
           target_days_snapshot: number;
           timezone_snapshot: string;
@@ -1163,7 +1175,9 @@ export type Database = {
           last_recalculated_at?: string | null;
           member_streak_rule_id: string;
           period_end: string;
+          period_end_at: string;
           period_start: string;
+          period_start_at: string;
           status?: Database['public']['Enums']['streak_period_status'];
           target_days_snapshot: number;
           timezone_snapshot: string;
@@ -1183,7 +1197,9 @@ export type Database = {
           last_recalculated_at?: string | null;
           member_streak_rule_id?: string;
           period_end?: string;
+          period_end_at?: string;
           period_start?: string;
+          period_start_at?: string;
           status?: Database['public']['Enums']['streak_period_status'];
           target_days_snapshot?: number;
           timezone_snapshot?: string;
