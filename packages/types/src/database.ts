@@ -476,6 +476,135 @@ export type Database = {
         };
         Relationships: [];
       };
+      member_streak_rules: {
+        Row: {
+          assigned_by: string | null;
+          created_at: string;
+          ends_at: string | null;
+          gym_id: string;
+          gym_member_id: string;
+          id: string;
+          max_freezes: number;
+          period_type: Database['public']['Enums']['streak_period_type'];
+          starts_at: string;
+          status: Database['public']['Enums']['member_streak_rule_status'];
+          streak_rule_id: string;
+          target_days: number;
+          timezone: string;
+          updated_at: string;
+          week_starts_on: number;
+        };
+        Insert: {
+          assigned_by?: string | null;
+          created_at?: string;
+          ends_at?: string | null;
+          gym_id: string;
+          gym_member_id: string;
+          id?: string;
+          max_freezes: number;
+          period_type: Database['public']['Enums']['streak_period_type'];
+          starts_at: string;
+          status?: Database['public']['Enums']['member_streak_rule_status'];
+          streak_rule_id: string;
+          target_days: number;
+          timezone: string;
+          updated_at?: string;
+          week_starts_on: number;
+        };
+        Update: {
+          assigned_by?: string | null;
+          created_at?: string;
+          ends_at?: string | null;
+          gym_id?: string;
+          gym_member_id?: string;
+          id?: string;
+          max_freezes?: number;
+          period_type?: Database['public']['Enums']['streak_period_type'];
+          starts_at?: string;
+          status?: Database['public']['Enums']['member_streak_rule_status'];
+          streak_rule_id?: string;
+          target_days?: number;
+          timezone?: string;
+          updated_at?: string;
+          week_starts_on?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'member_streak_rules_member_fk';
+            columns: ['gym_member_id', 'gym_id'];
+            isOneToOne: false;
+            referencedRelation: 'gym_members';
+            referencedColumns: ['id', 'gym_id'];
+          },
+          {
+            foreignKeyName: 'member_streak_rules_rule_fk';
+            columns: ['streak_rule_id', 'gym_id'];
+            isOneToOne: false;
+            referencedRelation: 'streak_rules';
+            referencedColumns: ['id', 'gym_id'];
+          },
+        ];
+      };
+      member_streaks: {
+        Row: {
+          best_streak: number;
+          calculated_through: string | null;
+          created_at: string;
+          current_period_id: string | null;
+          current_streak: number;
+          freezes_available: number;
+          gym_id: string;
+          gym_member_id: string;
+          id: string;
+          last_completed_period_start: string | null;
+          updated_at: string;
+          version: number;
+        };
+        Insert: {
+          best_streak?: number;
+          calculated_through?: string | null;
+          created_at?: string;
+          current_period_id?: string | null;
+          current_streak?: number;
+          freezes_available?: number;
+          gym_id: string;
+          gym_member_id: string;
+          id?: string;
+          last_completed_period_start?: string | null;
+          updated_at?: string;
+          version?: number;
+        };
+        Update: {
+          best_streak?: number;
+          calculated_through?: string | null;
+          created_at?: string;
+          current_period_id?: string | null;
+          current_streak?: number;
+          freezes_available?: number;
+          gym_id?: string;
+          gym_member_id?: string;
+          id?: string;
+          last_completed_period_start?: string | null;
+          updated_at?: string;
+          version?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'member_streaks_current_period_fk';
+            columns: ['current_period_id', 'gym_id', 'gym_member_id'];
+            isOneToOne: false;
+            referencedRelation: 'streak_periods';
+            referencedColumns: ['id', 'gym_id', 'gym_member_id'];
+          },
+          {
+            foreignKeyName: 'member_streaks_member_fk';
+            columns: ['gym_member_id', 'gym_id'];
+            isOneToOne: false;
+            referencedRelation: 'gym_members';
+            referencedColumns: ['id', 'gym_id'];
+          },
+        ];
+      };
       membership_plans: {
         Row: {
           access_limit: number | null;
@@ -936,6 +1065,204 @@ export type Database = {
           },
         ];
       };
+      streak_freeze_transactions: {
+        Row: {
+          amount: number;
+          created_at: string;
+          created_by: string | null;
+          gym_id: string;
+          gym_member_id: string;
+          id: string;
+          metadata: Json;
+          reason: string | null;
+          source_transaction_id: string | null;
+          streak_period_id: string | null;
+          transaction_type: Database['public']['Enums']['streak_freeze_transaction_type'];
+        };
+        Insert: {
+          amount: number;
+          created_at?: string;
+          created_by?: string | null;
+          gym_id: string;
+          gym_member_id: string;
+          id?: string;
+          metadata?: Json;
+          reason?: string | null;
+          source_transaction_id?: string | null;
+          streak_period_id?: string | null;
+          transaction_type: Database['public']['Enums']['streak_freeze_transaction_type'];
+        };
+        Update: {
+          amount?: number;
+          created_at?: string;
+          created_by?: string | null;
+          gym_id?: string;
+          gym_member_id?: string;
+          id?: string;
+          metadata?: Json;
+          reason?: string | null;
+          source_transaction_id?: string | null;
+          streak_period_id?: string | null;
+          transaction_type?: Database['public']['Enums']['streak_freeze_transaction_type'];
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'streak_freeze_transactions_member_fk';
+            columns: ['gym_member_id', 'gym_id'];
+            isOneToOne: false;
+            referencedRelation: 'gym_members';
+            referencedColumns: ['id', 'gym_id'];
+          },
+          {
+            foreignKeyName: 'streak_freeze_transactions_period_fk';
+            columns: ['streak_period_id', 'gym_id', 'gym_member_id'];
+            isOneToOne: false;
+            referencedRelation: 'streak_periods';
+            referencedColumns: ['id', 'gym_id', 'gym_member_id'];
+          },
+          {
+            foreignKeyName: 'streak_freeze_transactions_source_transaction_id_fkey';
+            columns: ['source_transaction_id'];
+            isOneToOne: false;
+            referencedRelation: 'streak_freeze_transactions';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      streak_periods: {
+        Row: {
+          created_at: string;
+          eligibility_reason:
+            | Database['public']['Enums']['streak_period_eligibility_reason']
+            | null;
+          finalized_at: string | null;
+          freeze_applied: boolean;
+          gym_id: string;
+          gym_member_id: string;
+          id: string;
+          last_recalculated_at: string | null;
+          member_streak_rule_id: string;
+          period_end: string;
+          period_start: string;
+          status: Database['public']['Enums']['streak_period_status'];
+          target_days_snapshot: number;
+          timezone_snapshot: string;
+          updated_at: string;
+          valid_days: number;
+        };
+        Insert: {
+          created_at?: string;
+          eligibility_reason?:
+            | Database['public']['Enums']['streak_period_eligibility_reason']
+            | null;
+          finalized_at?: string | null;
+          freeze_applied?: boolean;
+          gym_id: string;
+          gym_member_id: string;
+          id?: string;
+          last_recalculated_at?: string | null;
+          member_streak_rule_id: string;
+          period_end: string;
+          period_start: string;
+          status?: Database['public']['Enums']['streak_period_status'];
+          target_days_snapshot: number;
+          timezone_snapshot: string;
+          updated_at?: string;
+          valid_days?: number;
+        };
+        Update: {
+          created_at?: string;
+          eligibility_reason?:
+            | Database['public']['Enums']['streak_period_eligibility_reason']
+            | null;
+          finalized_at?: string | null;
+          freeze_applied?: boolean;
+          gym_id?: string;
+          gym_member_id?: string;
+          id?: string;
+          last_recalculated_at?: string | null;
+          member_streak_rule_id?: string;
+          period_end?: string;
+          period_start?: string;
+          status?: Database['public']['Enums']['streak_period_status'];
+          target_days_snapshot?: number;
+          timezone_snapshot?: string;
+          updated_at?: string;
+          valid_days?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'streak_periods_member_fk';
+            columns: ['gym_member_id', 'gym_id'];
+            isOneToOne: false;
+            referencedRelation: 'gym_members';
+            referencedColumns: ['id', 'gym_id'];
+          },
+          {
+            foreignKeyName: 'streak_periods_member_rule_fk';
+            columns: ['member_streak_rule_id', 'gym_id', 'gym_member_id'];
+            isOneToOne: false;
+            referencedRelation: 'member_streak_rules';
+            referencedColumns: ['id', 'gym_id', 'gym_member_id'];
+          },
+        ];
+      };
+      streak_rules: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          deleted_at: string | null;
+          gym_id: string;
+          id: string;
+          max_freezes: number;
+          name: string;
+          period_type: Database['public']['Enums']['streak_period_type'];
+          status: Database['public']['Enums']['streak_rule_status'];
+          target_days: number;
+          timezone: string;
+          updated_at: string;
+          week_starts_on: number;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          gym_id: string;
+          id?: string;
+          max_freezes?: number;
+          name: string;
+          period_type?: Database['public']['Enums']['streak_period_type'];
+          status?: Database['public']['Enums']['streak_rule_status'];
+          target_days: number;
+          timezone: string;
+          updated_at?: string;
+          week_starts_on?: number;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          gym_id?: string;
+          id?: string;
+          max_freezes?: number;
+          name?: string;
+          period_type?: Database['public']['Enums']['streak_period_type'];
+          status?: Database['public']['Enums']['streak_rule_status'];
+          target_days?: number;
+          timezone?: string;
+          updated_at?: string;
+          week_starts_on?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'streak_rules_gym_id_fkey';
+            columns: ['gym_id'];
+            isOneToOne: false;
+            referencedRelation: 'gyms';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       trainer_member_assignments: {
         Row: {
           created_at: string;
@@ -1279,6 +1606,10 @@ export type Database = {
         Args: { p_routine_id: string };
         Returns: string;
       };
+      archive_streak_rule: {
+        Args: { p_streak_rule_id: string };
+        Returns: string;
+      };
       archiveGymExercise: {
         Args: { p_exercise_id: string };
         Returns: string;
@@ -1291,12 +1622,32 @@ export type Database = {
         Args: { p_routine_id: string };
         Returns: string;
       };
+      archiveStreakRule: {
+        Args: { p_streak_rule_id: string };
+        Returns: string;
+      };
+      assign_member_streak_rule: {
+        Args: {
+          p_gym_id: string;
+          p_gym_member_id: string;
+          p_streak_rule_id: string;
+        };
+        Returns: string;
+      };
       assign_routine: {
         Args: {
           p_gym_member_id: string;
           p_notes?: string;
           p_routine_id: string;
           p_starts_at?: string;
+        };
+        Returns: string;
+      };
+      assignMemberStreakRule: {
+        Args: {
+          p_gym_id: string;
+          p_gym_member_id: string;
+          p_streak_rule_id: string;
         };
         Returns: string;
       };
@@ -1341,6 +1692,14 @@ export type Database = {
         Args: { p_reason?: string; p_workout_session_id: string };
         Returns: string;
       };
+      change_member_streak_rule: {
+        Args: {
+          p_gym_id: string;
+          p_gym_member_id: string;
+          p_new_streak_rule_id: string;
+        };
+        Returns: string;
+      };
       change_membership_plan: {
         Args: {
           p_membership_id: string;
@@ -1356,6 +1715,14 @@ export type Database = {
           p_new_plan_id: string;
           p_reason?: string;
           p_starts_at?: string;
+        };
+        Returns: string;
+      };
+      changeMemberStreakRule: {
+        Args: {
+          p_gym_id: string;
+          p_gym_member_id: string;
+          p_new_streak_rule_id: string;
         };
         Returns: string;
       };
@@ -1431,6 +1798,16 @@ export type Database = {
         Args: { p_description?: string; p_gym_id: string; p_name: string };
         Returns: string;
       };
+      create_streak_rule: {
+        Args: {
+          p_gym_id: string;
+          p_max_freezes?: number;
+          p_name: string;
+          p_target_days: number;
+          p_timezone?: string;
+        };
+        Returns: string;
+      };
       create_trainer_member_assignment: {
         Args: {
           p_gym_id: string;
@@ -1493,6 +1870,16 @@ export type Database = {
       };
       createRoutine: {
         Args: { p_description?: string; p_gym_id: string; p_name: string };
+        Returns: string;
+      };
+      createStreakRule: {
+        Args: {
+          p_gym_id: string;
+          p_max_freezes?: number;
+          p_name: string;
+          p_target_days: number;
+          p_timezone?: string;
+        };
         Returns: string;
       };
       createTrainerMemberAssignment: {
@@ -1693,6 +2080,17 @@ export type Database = {
         };
         Returns: string;
       };
+      update_streak_rule: {
+        Args: {
+          p_max_freezes: number;
+          p_name: string;
+          p_status?: Database['public']['Enums']['streak_rule_status'];
+          p_streak_rule_id: string;
+          p_target_days: number;
+          p_timezone: string;
+        };
+        Returns: string;
+      };
       updateGlobalExercise: {
         Args: {
           p_animation_url?: string;
@@ -1765,6 +2163,17 @@ export type Database = {
         };
         Returns: string;
       };
+      updateStreakRule: {
+        Args: {
+          p_max_freezes: number;
+          p_name: string;
+          p_status?: Database['public']['Enums']['streak_rule_status'];
+          p_streak_rule_id: string;
+          p_target_days: number;
+          p_timezone: string;
+        };
+        Returns: string;
+      };
     };
     Enums: {
       attendance_method:
@@ -1790,6 +2199,7 @@ export type Database = {
         | 'DISTANCE_TIME'
         | 'WEIGHT_TIME'
         | 'WEIGHT_DISTANCE';
+      member_streak_rule_status: 'ACTIVE' | 'ENDED';
       membership_access_type:
         'ACCESS_COUNT' | 'MONTHLY_LIMIT' | 'UNLIMITED' | 'WEEKLY_FREQUENCY';
       membership_frequency_period: 'MONTH' | 'WEEK';
@@ -1798,6 +2208,16 @@ export type Database = {
       muscle_involvement: 'PRIMARY' | 'SECONDARY';
       routine_assignment_status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
       routine_status: 'ACTIVE' | 'INACTIVE' | 'ARCHIVED';
+      streak_freeze_transaction_type:
+        'GRANT' | 'CONSUME' | 'RESTORE' | 'EXPIRE';
+      streak_period_eligibility_reason:
+        | 'NO_ACTIVE_MEMBERSHIP'
+        | 'PARTIAL_INITIAL_PERIOD'
+        | 'STREAK_NOT_ENABLED';
+      streak_period_status:
+        'OPEN' | 'COMPLETED' | 'FROZEN' | 'MISSED' | 'NOT_ELIGIBLE';
+      streak_period_type: 'WEEK';
+      streak_rule_status: 'ACTIVE' | 'INACTIVE' | 'ARCHIVED';
       trainer_member_assignment_status: 'ACTIVE' | 'INACTIVE';
       workout_set_status: 'PLANNED' | 'COMPLETED' | 'SKIPPED';
       workout_status: 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
@@ -1960,6 +2380,7 @@ export const Constants = {
         'WEIGHT_TIME',
         'WEIGHT_DISTANCE',
       ],
+      member_streak_rule_status: ['ACTIVE', 'ENDED'],
       membership_access_type: [
         'ACCESS_COUNT',
         'MONTHLY_LIMIT',
@@ -1972,6 +2393,21 @@ export const Constants = {
       muscle_involvement: ['PRIMARY', 'SECONDARY'],
       routine_assignment_status: ['ACTIVE', 'COMPLETED', 'CANCELLED'],
       routine_status: ['ACTIVE', 'INACTIVE', 'ARCHIVED'],
+      streak_freeze_transaction_type: ['GRANT', 'CONSUME', 'RESTORE', 'EXPIRE'],
+      streak_period_eligibility_reason: [
+        'NO_ACTIVE_MEMBERSHIP',
+        'PARTIAL_INITIAL_PERIOD',
+        'STREAK_NOT_ENABLED',
+      ],
+      streak_period_status: [
+        'OPEN',
+        'COMPLETED',
+        'FROZEN',
+        'MISSED',
+        'NOT_ELIGIBLE',
+      ],
+      streak_period_type: ['WEEK'],
+      streak_rule_status: ['ACTIVE', 'INACTIVE', 'ARCHIVED'],
       trainer_member_assignment_status: ['ACTIVE', 'INACTIVE'],
       workout_set_status: ['PLANNED', 'COMPLETED', 'SKIPPED'],
       workout_status: ['IN_PROGRESS', 'COMPLETED', 'CANCELLED'],

@@ -304,6 +304,64 @@ export const recordWorkoutSetSchema = z
     }
   });
 
+export const streakPeriodTypeSchema = z.enum(['WEEK']);
+export const streakRuleStatusSchema = z.enum([
+  'ACTIVE',
+  'INACTIVE',
+  'ARCHIVED',
+]);
+export const editableStreakRuleStatusSchema = z.enum(['ACTIVE', 'INACTIVE']);
+export const memberStreakRuleStatusSchema = z.enum(['ACTIVE', 'ENDED']);
+export const streakPeriodStatusSchema = z.enum([
+  'OPEN',
+  'COMPLETED',
+  'FROZEN',
+  'MISSED',
+  'NOT_ELIGIBLE',
+]);
+export const streakFreezeTransactionTypeSchema = z.enum([
+  'GRANT',
+  'CONSUME',
+  'RESTORE',
+  'EXPIRE',
+]);
+export const streakPeriodEligibilityReasonSchema = z.enum([
+  'NO_ACTIVE_MEMBERSHIP',
+  'PARTIAL_INITIAL_PERIOD',
+  'STREAK_NOT_ENABLED',
+]);
+
+export const createStreakRuleSchema = z.object({
+  gymId: z.uuid(),
+  name: z.string().trim().min(1),
+  targetDays: z.number().int().min(1).max(7),
+  maxFreezes: z.number().int().min(0).max(2).default(2),
+  timezone: z.string().trim().min(1).nullable().optional(),
+});
+
+export const updateStreakRuleSchema = createStreakRuleSchema
+  .omit({ gymId: true })
+  .extend({
+    streakRuleId: z.uuid(),
+    status: editableStreakRuleStatusSchema.default('ACTIVE'),
+  });
+
+export const archiveStreakRuleSchema = z.object({
+  streakRuleId: z.uuid(),
+});
+
+export const assignMemberStreakRuleSchema = z.object({
+  gymId: z.uuid(),
+  gymMemberId: z.uuid(),
+  streakRuleId: z.uuid(),
+});
+
+export const changeMemberStreakRuleSchema = z.object({
+  gymId: z.uuid(),
+  gymMemberId: z.uuid(),
+  newStreakRuleId: z.uuid(),
+});
+
 export const completeWorkoutSchema = z.object({
   workoutSessionId: z.uuid(),
 });
@@ -347,5 +405,16 @@ export type DeactivateTrainerMemberAssignmentInput = z.infer<
 >;
 export type StartWorkoutInput = z.infer<typeof startWorkoutSchema>;
 export type RecordWorkoutSetInput = z.infer<typeof recordWorkoutSetSchema>;
+
+export type CreateStreakRuleInput = z.infer<typeof createStreakRuleSchema>;
+export type UpdateStreakRuleInput = z.infer<typeof updateStreakRuleSchema>;
+export type ArchiveStreakRuleInput = z.infer<typeof archiveStreakRuleSchema>;
+export type AssignMemberStreakRuleInput = z.infer<
+  typeof assignMemberStreakRuleSchema
+>;
+export type ChangeMemberStreakRuleInput = z.infer<
+  typeof changeMemberStreakRuleSchema
+>;
+
 export type CompleteWorkoutInput = z.infer<typeof completeWorkoutSchema>;
 export type CancelWorkoutInput = z.infer<typeof cancelWorkoutSchema>;

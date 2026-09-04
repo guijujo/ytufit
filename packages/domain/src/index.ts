@@ -61,6 +61,42 @@ export type RoutineAssignmentStatus =
 export const trainerMemberAssignmentStatuses = ['ACTIVE', 'INACTIVE'] as const;
 export type TrainerMemberAssignmentStatus =
   (typeof trainerMemberAssignmentStatuses)[number];
+
+export const streakPeriodTypes = ['WEEK'] as const;
+export type StreakPeriodType = (typeof streakPeriodTypes)[number];
+
+export const streakRuleStatuses = ['ACTIVE', 'INACTIVE', 'ARCHIVED'] as const;
+export type StreakRuleStatus = (typeof streakRuleStatuses)[number];
+
+export const memberStreakRuleStatuses = ['ACTIVE', 'ENDED'] as const;
+export type MemberStreakRuleStatus = (typeof memberStreakRuleStatuses)[number];
+
+export const streakPeriodStatuses = [
+  'OPEN',
+  'COMPLETED',
+  'FROZEN',
+  'MISSED',
+  'NOT_ELIGIBLE',
+] as const;
+export type StreakPeriodStatus = (typeof streakPeriodStatuses)[number];
+
+export const streakFreezeTransactionTypes = [
+  'GRANT',
+  'CONSUME',
+  'RESTORE',
+  'EXPIRE',
+] as const;
+export type StreakFreezeTransactionType =
+  (typeof streakFreezeTransactionTypes)[number];
+
+export const streakPeriodEligibilityReasons = [
+  'NO_ACTIVE_MEMBERSHIP',
+  'PARTIAL_INITIAL_PERIOD',
+  'STREAK_NOT_ENABLED',
+] as const;
+export type StreakPeriodEligibilityReason =
+  (typeof streakPeriodEligibilityReasons)[number];
+
 export const domainEvents = [
   'ATTENDANCE_CREATED',
   'WORKOUT_COMPLETED',
