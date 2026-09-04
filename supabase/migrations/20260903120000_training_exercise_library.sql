@@ -132,8 +132,13 @@ CREATE OR REPLACE FUNCTION private.can_read_exercise(
 SET search_path = pg_catalog, public
 AS $$
   SELECT
-    private.is_platform_admin()
-    OR (p_scope = 'GLOBAL' AND p_status = 'ACTIVE' AND (SELECT auth.uid()) IS NOT NULL)
+    (
+      p_scope = 'GLOBAL'
+      AND (
+        private.is_platform_admin()
+        OR (p_status = 'ACTIVE' AND (SELECT auth.uid()) IS NOT NULL)
+      )
+    )
     OR (p_scope = 'GYM' AND p_gym_id IS NOT NULL AND private.is_gym_member(p_gym_id));
 $$;
 
