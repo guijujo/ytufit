@@ -227,14 +227,16 @@ BEGIN
   v_period_start_at := private.streak_period_boundary(p_period_start, v_rule.timezone);
   v_period_end_at := private.streak_period_boundary(p_period_start + 7, v_rule.timezone);
 
-  IF v_rule.starts_at > v_period_start_at THEN
-    v_period_status := 'NOT_ELIGIBLE';
-    v_reason := 'PARTIAL_INITIAL_PERIOD';
-    v_finalized_at := p_as_of;
-  ELSIF NOT private.is_streak_period_eligible(v_rule.gym_id, p_gym_member_id, v_period_start_at) THEN
-    v_period_status := 'NOT_ELIGIBLE';
-    v_reason := 'NO_ACTIVE_MEMBERSHIP';
-    v_finalized_at := p_as_of;
+  IF p_as_of >= v_period_end_at THEN
+    IF v_rule.starts_at > v_period_start_at THEN
+      v_period_status := 'NOT_ELIGIBLE';
+      v_reason := 'PARTIAL_INITIAL_PERIOD';
+      v_finalized_at := p_as_of;
+    ELSIF NOT private.is_streak_period_eligible(v_rule.gym_id, p_gym_member_id, v_period_start_at) THEN
+      v_period_status := 'NOT_ELIGIBLE';
+      v_reason := 'NO_ACTIVE_MEMBERSHIP';
+      v_finalized_at := p_as_of;
+    END IF;
   END IF;
 
   INSERT INTO public.streak_periods (
@@ -324,14 +326,14 @@ BEGIN
     v_finalized_at := NULL;
     v_should_freeze := FALSE;
 
-    IF v_period.assignment_starts_at > v_period.period_start_at THEN
+    IF v_period.period_end_at > p_as_of THEN
+      v_new_status := 'OPEN';
+    ELSIF v_period.assignment_starts_at > v_period.period_start_at THEN
       v_new_status := 'NOT_ELIGIBLE';
       v_reason := 'PARTIAL_INITIAL_PERIOD';
     ELSIF NOT private.is_streak_period_eligible(v_period.gym_id, v_period.gym_member_id, v_period.period_start_at) THEN
       v_new_status := 'NOT_ELIGIBLE';
       v_reason := 'NO_ACTIVE_MEMBERSHIP';
-    ELSIF v_period.period_end_at > p_as_of THEN
-      v_new_status := 'OPEN';
     ELSIF v_valid_days >= v_period.target_days_snapshot THEN
       v_new_status := 'COMPLETED';
     ELSIF v_current_streak > 0 AND v_virtual_balance > 0 THEN

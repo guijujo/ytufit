@@ -109,6 +109,27 @@ SELECT throws_ok(
   NULL,
   'Open current week cannot be finalized before the local end boundary'
 );
+INSERT INTO public.streak_freeze_transactions (
+  gym_id, gym_member_id, streak_period_id, transaction_type, amount, reason
+) VALUES (
+  '00000000-0000-0000-0000-000000000001',
+  'cccccccc-cccc-cccc-cccc-cccccccccccc',
+  (SELECT id FROM public.streak_periods WHERE gym_member_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc' AND period_start = '2026-09-07'),
+  'CONSUME',
+  1,
+  'fixture stale consume on open period'
+);
+SELECT ok(private.recalculate_member_streak('cccccccc-cccc-cccc-cccc-cccccccccccc', '2026-09-07', '2026-09-08 03:00:00+00') IS NOT NULL, 'Recalculate restores a stale consume from an OPEN period');
+SELECT results_eq(
+  $$ SELECT status, finalized_at IS NULL, eligibility_reason, private.get_active_streak_freeze_consume(id) IS NULL FROM public.streak_periods WHERE gym_member_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc' AND period_start = '2026-09-07' $$,
+  $$ VALUES ('OPEN'::public.streak_period_status, true, NULL::public.streak_period_eligibility_reason, true) $$,
+  'OPEN period remains open and has no active consume after stale-freeze reconciliation'
+);
+SELECT results_eq(
+  $$ SELECT freezes_available FROM public.member_streaks WHERE gym_member_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc' $$,
+  $$ VALUES (1::smallint) $$,
+  'Stale OPEN consume restoration preserves available freeze balance'
+);
 
 SELECT ok(private.create_member_streak_rule_assignment(
   '00000000-0000-0000-0000-000000000001',
@@ -121,9 +142,26 @@ SELECT ok(private.create_member_streak_rule_assignment(
 ) IS NOT NULL, 'Engine fixture assigns a midweek rule for partial period eligibility');
 SELECT ok(private.ensure_streak_period('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '2026-09-07', '2026-09-10 03:00:00+00') IS NOT NULL, 'Engine materializes a partial initial period');
 SELECT results_eq(
+  $$ SELECT status, eligibility_reason, finalized_at IS NULL FROM public.streak_periods WHERE gym_member_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' AND period_start = '2026-09-07' $$,
+  $$ VALUES ('OPEN'::public.streak_period_status, NULL::public.streak_period_eligibility_reason, true) $$,
+  'Partial initial current week remains OPEN before the boundary'
+);
+SELECT ok(private.recalculate_member_streak('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '2026-09-07', '2026-09-10 03:00:00+00') IS NOT NULL, 'Recalculating a partial current week before boundary is idempotent');
+SELECT results_eq(
+  $$ SELECT status, eligibility_reason, finalized_at IS NULL FROM public.streak_periods WHERE gym_member_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' AND period_start = '2026-09-07' $$,
+  $$ VALUES ('OPEN'::public.streak_period_status, NULL::public.streak_period_eligibility_reason, true) $$,
+  'Partial current week stays OPEN with no provisional eligibility reason'
+);
+SELECT results_eq(
+  $$ SELECT freezes_available FROM public.member_streaks WHERE gym_member_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' $$,
+  $$ VALUES (1::smallint) $$,
+  'OPEN partial-initial period consumes no freeze'
+);
+SELECT ok(private.recalculate_member_streak('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '2026-09-07', '2026-09-14 03:00:00+00') IS NOT NULL, 'Partial current week may finalize at the exact end boundary');
+SELECT results_eq(
   $$ SELECT status, eligibility_reason, finalized_at IS NOT NULL FROM public.streak_periods WHERE gym_member_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' AND period_start = '2026-09-07' $$,
   $$ VALUES ('NOT_ELIGIBLE'::public.streak_period_status, 'PARTIAL_INITIAL_PERIOD'::public.streak_period_eligibility_reason, true) $$,
-  'Partial initial period is terminal NOT_ELIGIBLE'
+  'Same partial week becomes NOT_ELIGIBLE at the boundary'
 );
 
 SELECT ok(private.create_member_streak_rule_assignment(
@@ -155,6 +193,29 @@ SELECT results_eq(
     ('ENDED'::public.member_streak_rule_status, 3::smallint),
     ('ACTIVE'::public.member_streak_rule_status, 2::smallint) $$,
   'Due scheduled assignment becomes ACTIVE and prior assignment becomes ENDED'
+);
+SELECT ok(private.ensure_streak_period('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '2026-09-07', '2026-09-08 03:00:00+00') IS NOT NULL, 'Engine creates a no-membership current week as OPEN');
+SELECT results_eq(
+  $$ SELECT status, eligibility_reason, finalized_at IS NULL FROM public.streak_periods WHERE gym_member_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb' AND period_start = '2026-09-07' $$,
+  $$ VALUES ('OPEN'::public.streak_period_status, NULL::public.streak_period_eligibility_reason, true) $$,
+  'No-membership current week remains OPEN before the boundary'
+);
+SELECT ok(private.recalculate_member_streak('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '2026-09-07', '2026-09-08 03:00:00+00') IS NOT NULL, 'Recalculating a no-membership current week before boundary is idempotent');
+SELECT results_eq(
+  $$ SELECT status, eligibility_reason, finalized_at IS NULL FROM public.streak_periods WHERE gym_member_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb' AND period_start = '2026-09-07' $$,
+  $$ VALUES ('OPEN'::public.streak_period_status, NULL::public.streak_period_eligibility_reason, true) $$,
+  'No-membership current week stays OPEN with no provisional eligibility reason'
+);
+SELECT results_eq(
+  $$ SELECT freezes_available FROM public.member_streaks WHERE gym_member_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb' $$,
+  $$ VALUES (1::smallint) $$,
+  'OPEN no-membership period consumes no freeze'
+);
+SELECT ok(private.recalculate_member_streak('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '2026-09-07', '2026-09-14 03:00:00+00') IS NOT NULL, 'No-membership week may finalize at the exact end boundary');
+SELECT results_eq(
+  $$ SELECT status, eligibility_reason, finalized_at IS NOT NULL FROM public.streak_periods WHERE gym_member_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb' AND period_start = '2026-09-07' $$,
+  $$ VALUES ('NOT_ELIGIBLE'::public.streak_period_status, 'NO_ACTIVE_MEMBERSHIP'::public.streak_period_eligibility_reason, true) $$,
+  'Same no-membership week becomes NOT_ELIGIBLE at the boundary'
 );
 
 SELECT throws_ok(
