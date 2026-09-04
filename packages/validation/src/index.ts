@@ -37,6 +37,16 @@ export const routineAssignmentStatusSchema = z.enum([
   'COMPLETED',
   'CANCELLED',
 ]);
+export const workoutStatusSchema = z.enum([
+  'IN_PROGRESS',
+  'COMPLETED',
+  'CANCELLED',
+]);
+export const workoutSetStatusSchema = z.enum([
+  'PLANNED',
+  'COMPLETED',
+  'SKIPPED',
+]);
 
 const nullableTrimmedTextSchema = z
   .string()
@@ -214,6 +224,94 @@ export const deactivateTrainerMemberAssignmentSchema = z.object({
   assignmentId: z.uuid(),
 });
 
+export const startWorkoutSchema = z.object({
+  routineAssignmentId: z.uuid(),
+});
+
+export const recordWorkoutSetSchema = z
+  .object({
+    workoutExerciseId: z.uuid(),
+    setNumber: positiveIntegerSchema,
+    trackingType: exerciseTrackingTypeSchema,
+    status: workoutSetStatusSchema.default('COMPLETED'),
+    reps: nonNegativeIntegerSchema,
+    weight: nonNegativeNumberSchema,
+    durationSeconds: nonNegativeIntegerSchema,
+    distanceMeters: nonNegativeNumberSchema,
+    notes: nullableTrimmedTextSchema,
+  })
+  .superRefine((value, ctx) => {
+    const addIssue = (message: string) =>
+      ctx.addIssue({ code: 'custom', message });
+
+    if (value.status === 'PLANNED') {
+      addIssue('recordWorkoutSet cannot write PLANNED status');
+      return;
+    }
+
+    const hasReps = value.reps != null;
+    const hasWeight = value.weight != null;
+    const hasDuration = value.durationSeconds != null;
+    const hasDistance = value.distanceMeters != null;
+
+    if (value.status === 'SKIPPED') {
+      if (hasReps || hasWeight || hasDuration || hasDistance) {
+        addIssue('Skipped sets cannot include performance metrics');
+      }
+      return;
+    }
+
+    const requirements: Record<
+      z.infer<typeof exerciseTrackingTypeSchema>,
+      { reps: boolean; weight: boolean; duration: boolean; distance: boolean }
+    > = {
+      WEIGHT_REPS: {
+        reps: true,
+        weight: true,
+        duration: false,
+        distance: false,
+      },
+      REPS: { reps: true, weight: false, duration: false, distance: false },
+      TIME: { reps: false, weight: false, duration: true, distance: false },
+      DISTANCE_TIME: {
+        reps: false,
+        weight: false,
+        duration: true,
+        distance: true,
+      },
+      WEIGHT_TIME: {
+        reps: false,
+        weight: true,
+        duration: true,
+        distance: false,
+      },
+      WEIGHT_DISTANCE: {
+        reps: false,
+        weight: true,
+        duration: false,
+        distance: true,
+      },
+    };
+
+    const expected = requirements[value.trackingType];
+    if (
+      hasReps !== expected.reps ||
+      hasWeight !== expected.weight ||
+      hasDuration !== expected.duration ||
+      hasDistance !== expected.distance
+    ) {
+      addIssue(`${value.trackingType} metrics do not match tracking type`);
+    }
+  });
+
+export const completeWorkoutSchema = z.object({
+  workoutSessionId: z.uuid(),
+});
+
+export const cancelWorkoutSchema = completeWorkoutSchema.extend({
+  reason: nullableTrimmedTextSchema,
+});
+
 export type CreateGymExerciseInput = z.infer<typeof createGymExerciseSchema>;
 export type UpdateGymExerciseInput = z.infer<typeof updateGymExerciseSchema>;
 export type ArchiveGymExerciseInput = z.infer<typeof archiveGymExerciseSchema>;
@@ -247,3 +345,7 @@ export type CreateTrainerMemberAssignmentInput = z.infer<
 export type DeactivateTrainerMemberAssignmentInput = z.infer<
   typeof deactivateTrainerMemberAssignmentSchema
 >;
+export type StartWorkoutInput = z.infer<typeof startWorkoutSchema>;
+export type RecordWorkoutSetInput = z.infer<typeof recordWorkoutSetSchema>;
+export type CompleteWorkoutInput = z.infer<typeof completeWorkoutSchema>;
+export type CancelWorkoutInput = z.infer<typeof cancelWorkoutSchema>;

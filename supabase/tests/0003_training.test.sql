@@ -1,7 +1,7 @@
 -- pgTAP tests for YtuFit v2.0.3-A Training exercise library.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap;
-SELECT plan(125);
+SELECT plan(192);
 
 
 -- Extra Training-only fixture used to test trainer-member authorization without changing global identity tests.
@@ -351,6 +351,219 @@ SET LOCAL ROLE authenticated;
 SET LOCAL "request.jwt.claims" = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated","email":"trainer-a@ytufit.local"}';
 SELECT ok(public.assign_routine('61000000-0000-0000-0000-000000000001', 'ffffffff-ffff-ffff-ffff-ffffffff0001', now(), 'trainer newly authorized') IS NOT NULL, 'Trainer can assign after trainer-member authorization exists');
 
+SET LOCAL ROLE postgres;
+RESET "request.jwt.claims";
+INSERT INTO public.exercises (
+  id, scope, gym_id, name, slug, description, instructions, tracking_type,
+  category, movement_pattern, created_by
+) VALUES
+  ('55000000-0000-0000-0000-000000000003', 'GYM', '00000000-0000-0000-0000-000000000001', 'Empuje con trineo Alpha', 'empuje-trineo-alpha', 'Carga sostenida por tiempo.', NULL, 'WEIGHT_TIME', 'STRENGTH', 'PUSH', '11111111-1111-1111-1111-111111111111'),
+  ('55000000-0000-0000-0000-000000000004', 'GYM', '00000000-0000-0000-0000-000000000001', 'Carry pesado Alpha', 'carry-pesado-alpha', 'Traslado de carga por distancia.', NULL, 'WEIGHT_DISTANCE', 'STRENGTH', 'CARRY', '11111111-1111-1111-1111-111111111111'),
+  ('55000000-0000-0000-0000-000000000005', 'GYM', '00000000-0000-0000-0000-000000000001', 'Remo ergometro Alpha', 'remo-ergometro-alpha', 'Distancia con duracion medida.', NULL, 'DISTANCE_TIME', 'CARDIO', 'CARDIO', '11111111-1111-1111-1111-111111111111')
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  slug = EXCLUDED.slug,
+  description = EXCLUDED.description,
+  instructions = EXCLUDED.instructions,
+  tracking_type = EXCLUDED.tracking_type,
+  category = EXCLUDED.category,
+  movement_pattern = EXCLUDED.movement_pattern,
+  status = 'ACTIVE',
+  deleted_at = NULL;
+INSERT INTO public.routines (id, gym_id, name, description, status, created_by)
+VALUES ('61000000-0000-0000-0000-000000000010', '00000000-0000-0000-0000-000000000001', 'Workout Matrix A', 'Rutina con todos los tracking types para tests de workout.', 'ACTIVE', '11111111-1111-1111-1111-111111111111')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description, status = EXCLUDED.status;
+INSERT INTO public.routine_exercises (
+  id, gym_id, routine_id, exercise_id, position, tracking_type, sets_target,
+  reps_min, reps_max, weight_target, duration_seconds_target, distance_meters_target,
+  rest_seconds, notes
+) VALUES
+  ('62000000-0000-0000-0000-000000000010', '00000000-0000-0000-0000-000000000001', '61000000-0000-0000-0000-000000000010', '55000000-0000-0000-0000-000000000001', 1, 'WEIGHT_REPS', 2, 8, 10, 60, NULL, NULL, 90, 'Matrix weight reps'),
+  ('62000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000001', '61000000-0000-0000-0000-000000000010', '54000000-0000-0000-0000-000000000004', 2, 'REPS', 1, 5, 5, NULL, NULL, NULL, 75, 'Matrix reps'),
+  ('62000000-0000-0000-0000-000000000012', '00000000-0000-0000-0000-000000000001', '61000000-0000-0000-0000-000000000010', '54000000-0000-0000-0000-000000000005', 3, 'TIME', 1, NULL, NULL, NULL, 45, NULL, 60, 'Matrix time'),
+  ('62000000-0000-0000-0000-000000000013', '00000000-0000-0000-0000-000000000001', '61000000-0000-0000-0000-000000000010', '55000000-0000-0000-0000-000000000005', 4, 'DISTANCE_TIME', 1, NULL, NULL, NULL, 600, 1000, 120, 'Matrix distance time'),
+  ('62000000-0000-0000-0000-000000000014', '00000000-0000-0000-0000-000000000001', '61000000-0000-0000-0000-000000000010', '55000000-0000-0000-0000-000000000003', 5, 'WEIGHT_TIME', 1, NULL, NULL, 20, 30, NULL, 45, 'Matrix weight time'),
+  ('62000000-0000-0000-0000-000000000015', '00000000-0000-0000-0000-000000000001', '61000000-0000-0000-0000-000000000010', '55000000-0000-0000-0000-000000000004', 6, 'WEIGHT_DISTANCE', 1, NULL, NULL, 30, NULL, 40, 45, 'Matrix weight distance')
+ON CONFLICT (id) DO UPDATE SET
+  exercise_id = EXCLUDED.exercise_id,
+  position = EXCLUDED.position,
+  tracking_type = EXCLUDED.tracking_type,
+  sets_target = EXCLUDED.sets_target,
+  reps_min = EXCLUDED.reps_min,
+  reps_max = EXCLUDED.reps_max,
+  weight_target = EXCLUDED.weight_target,
+  duration_seconds_target = EXCLUDED.duration_seconds_target,
+  distance_meters_target = EXCLUDED.distance_meters_target,
+  rest_seconds = EXCLUDED.rest_seconds,
+  notes = EXCLUDED.notes;
+INSERT INTO public.routine_assignments (
+  id, gym_id, routine_id, gym_member_id, assigned_by, starts_at, status, notes
+) VALUES
+  ('63000000-0000-0000-0000-000000000010', '00000000-0000-0000-0000-000000000001', '61000000-0000-0000-0000-000000000010', 'cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-1111-1111-1111-111111111111', '2026-09-01 00:00:00+00', 'ACTIVE', 'workout matrix member a'),
+  ('63000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000001', '61000000-0000-0000-0000-000000000010', 'ffffffff-ffff-ffff-ffff-ffffffff0001', '11111111-1111-1111-1111-111111111111', '2026-09-01 00:00:00+00', 'ACTIVE', 'workout cancellation member a2')
+ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, ends_at = NULL, notes = EXCLUDED.notes;
+
+-- Workout sessions, historical snapshots and workout sets.
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated","email":"member-a@ytufit.local"}';
+SELECT ok(public.start_workout('63000000-0000-0000-0000-000000000010') IS NOT NULL, 'Member starts workout from own ACTIVE assignment');
+
+SET LOCAL ROLE postgres;
+RESET "request.jwt.claims";
+DO $$
+BEGIN
+  PERFORM set_config(
+    'ytufit_test.main_we_1',
+    (
+      SELECT id::text
+      FROM public.workout_exercises
+      WHERE workout_session_id = (
+        SELECT id FROM public.workout_sessions
+        WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000010'
+      )
+      AND position = 1
+    ),
+    true
+  );
+END $$;
+
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated","email":"member-a@ytufit.local"}';
+SELECT throws_ok($$ SELECT public.start_workout('63000000-0000-0000-0000-000000000002') $$, '42501', NULL, 'Member cannot start another member assignment');
+SELECT throws_ok($$ SELECT public.start_workout('63000000-0000-0000-0000-000000000001') $$, '55000', NULL, 'Member cannot start COMPLETED routine assignment');
+SELECT throws_ok($$ SELECT public.start_workout((SELECT id FROM public.routine_assignments WHERE notes = 'cancelled by admin')) $$, '55000', NULL, 'Member cannot start CANCELLED routine assignment');
+
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub":"55555555-5555-5555-5555-555555555555","role":"authenticated","email":"member-b@ytufit.local"}';
+SELECT throws_ok($$ SELECT public.start_workout('63000000-0000-0000-0000-000000000010') $$, '42501', NULL, 'Member B cannot start Gym A assignment');
+
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated","email":"member-a@ytufit.local"}';
+SELECT throws_ok($$ SELECT public.start_workout('63000000-0000-0000-0000-000000000010') $$, '23505', NULL, 'Member cannot create a second IN_PROGRESS workout');
+
+SET LOCAL ROLE anon;
+RESET "request.jwt.claims";
+SELECT throws_ok($$ SELECT public.start_workout('63000000-0000-0000-0000-000000000010') $$, '42501', NULL, 'Anon cannot start workout');
+
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated","email":"admin-a@ytufit.local"}';
+SELECT throws_ok($$ SELECT public.start_workout('63000000-0000-0000-0000-000000000010') $$, '42501', NULL, 'RPC cannot forge workout owner through assignment id');
+
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated","email":"member-a@ytufit.local"}';
+SELECT results_eq($$ SELECT position, exercise_name FROM public.workout_exercises WHERE workout_session_id = (SELECT id FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000010') ORDER BY position $$, $$ VALUES (1, 'Press inclinado Gym Alpha'::text), (2, 'Dominadas'::text), (3, 'Plancha'::text), (4, 'Remo ergometro Alpha'::text), (5, 'Empuje con trineo Alpha'::text), (6, 'Carry pesado Alpha'::text) $$, 'Workout exercises are snapshotted in routine order');
+SELECT results_eq($$ SELECT exercise_name FROM public.workout_exercises WHERE workout_session_id = (SELECT id FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000010') AND position = 1 $$, $$ VALUES ('Press inclinado Gym Alpha'::text) $$, 'Workout exercise stores exercise name snapshot');
+SELECT results_eq($$ SELECT tracking_type FROM public.workout_exercises WHERE workout_session_id = (SELECT id FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000010') AND position = 1 $$, $$ VALUES ('WEIGHT_REPS'::public.exercise_tracking_type) $$, 'Workout exercise stores tracking type snapshot');
+SELECT results_eq($$ SELECT sets_target, reps_min, reps_max, weight_target, rest_seconds FROM public.workout_exercises WHERE workout_session_id = (SELECT id FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000010') AND position = 1 $$, $$ VALUES (2, 8, 10, 60.00::numeric, 90) $$, 'Workout exercise stores prescription snapshot');
+SELECT results_eq($$ SELECT count(*)::integer FROM public.workout_sets ws JOIN public.workout_exercises we ON we.id = ws.workout_exercise_id WHERE we.workout_session_id = (SELECT id FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000010') AND ws.status = 'PLANNED' $$, $$ VALUES (7) $$, 'start_workout creates planned sets from sets_target');
+
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated","email":"admin-a@ytufit.local"}';
+SELECT ok(public.update_routine_exercise('62000000-0000-0000-0000-000000000010', '55000000-0000-0000-0000-000000000001', 1, 2, 1, 2, 66, NULL, NULL, 30, 'mutated original') IS NOT NULL, 'Gym Admin can mutate original routine prescription after workout start');
+
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated","email":"member-a@ytufit.local"}';
+SELECT results_eq($$ SELECT reps_min, reps_max, weight_target, rest_seconds, notes FROM public.workout_exercises WHERE workout_session_id = (SELECT id FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000010') AND position = 1 $$, $$ VALUES (8, 10, 60.00::numeric, 90, 'Matrix weight reps'::text) $$, 'Routine prescription edits do not leak into workout snapshot');
+
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated","email":"admin-a@ytufit.local"}';
+SELECT ok(public.update_gym_exercise('55000000-0000-0000-0000-000000000001', 'Press inclinado editado', 'press-inclinado-editado', NULL, NULL, 'WEIGHT_REPS', 'STRENGTH', 'PUSH', 'ACTIVE') IS NOT NULL, 'Gym Admin can mutate source exercise after workout start');
+
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated","email":"member-a@ytufit.local"}';
+SELECT results_eq($$ SELECT exercise_name FROM public.workout_exercises WHERE workout_session_id = (SELECT id FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000010') AND position = 1 $$, $$ VALUES ('Press inclinado Gym Alpha'::text) $$, 'Exercise edits do not change workout exercise name snapshot');
+SELECT ok(public.record_workout_set((SELECT id FROM public.workout_exercises WHERE workout_session_id = (SELECT id FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000010') AND position = 1), 1, 'COMPLETED', 9, 62.5, NULL, NULL, 'solid') IS NOT NULL, 'Member records WEIGHT_REPS set');
+SELECT results_eq($$ SELECT reps, weight, status FROM public.workout_sets WHERE workout_exercise_id = (SELECT id FROM public.workout_exercises WHERE workout_session_id = (SELECT id FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000010') AND position = 1) AND set_number = 1 $$, $$ VALUES (9, 62.50::numeric, 'COMPLETED'::public.workout_set_status) $$, 'Recorded WEIGHT_REPS metrics persist');
+SELECT ok(public.record_workout_set((SELECT id FROM public.workout_exercises WHERE workout_session_id = (SELECT id FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000010') AND position = 2), 1, 'COMPLETED', 5, NULL, NULL, NULL, NULL) IS NOT NULL, 'Member records REPS set');
+SELECT ok(public.record_workout_set((SELECT id FROM public.workout_exercises WHERE workout_session_id = (SELECT id FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000010') AND position = 3), 1, 'COMPLETED', NULL, NULL, 50, NULL, NULL) IS NOT NULL, 'Member records TIME set');
+SELECT ok(public.record_workout_set((SELECT id FROM public.workout_exercises WHERE workout_session_id = (SELECT id FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000010') AND position = 4), 1, 'COMPLETED', NULL, NULL, 620, 1100, NULL) IS NOT NULL, 'Member records DISTANCE_TIME set');
+SELECT ok(public.record_workout_set((SELECT id FROM public.workout_exercises WHERE workout_session_id = (SELECT id FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000010') AND position = 5), 1, 'COMPLETED', NULL, 22, 35, NULL, NULL) IS NOT NULL, 'Member records WEIGHT_TIME set');
+SELECT ok(public.record_workout_set((SELECT id FROM public.workout_exercises WHERE workout_session_id = (SELECT id FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000010') AND position = 6), 1, 'COMPLETED', NULL, 32, NULL, 45, NULL) IS NOT NULL, 'Member records WEIGHT_DISTANCE set');
+SELECT throws_ok($$ SELECT public.record_workout_set((SELECT id FROM public.workout_exercises WHERE workout_session_id = (SELECT id FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000010') AND position = 2), 2, 'COMPLETED', -1, NULL, NULL, NULL, NULL) $$, '23514', NULL, 'Negative workout set metrics are rejected');
+SELECT throws_ok($$ SELECT public.record_workout_set((SELECT id FROM public.workout_exercises WHERE workout_session_id = (SELECT id FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000010') AND position = 2), 2, 'COMPLETED', 6, 10, NULL, NULL, NULL) $$, '22023', NULL, 'Incompatible tracking payload is rejected');
+SELECT ok(public.record_workout_set((SELECT id FROM public.workout_exercises WHERE workout_session_id = (SELECT id FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000010') AND position = 1), 2, 'SKIPPED', NULL, NULL, NULL, NULL, 'fatigue') IS NOT NULL, 'SKIPPED set is valid without metrics');
+
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub":"66666666-6666-6666-6666-666666666666","role":"authenticated","email":"member-a2@ytufit.local"}';
+SELECT throws_ok($$ SELECT public.record_workout_set(current_setting('ytufit_test.main_we_1')::uuid, 1, 'COMPLETED', 8, 60, NULL, NULL, NULL) $$, '42501', NULL, 'Other Member cannot record workout set');
+
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated","email":"trainer-a@ytufit.local"}';
+SELECT throws_ok($$ SELECT public.record_workout_set(current_setting('ytufit_test.main_we_1')::uuid, 1, 'COMPLETED', 8, 60, NULL, NULL, NULL) $$, '42501', NULL, 'Trainer cannot record member performance');
+
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated","email":"admin-a@ytufit.local"}';
+SELECT throws_ok($$ SELECT public.record_workout_set(current_setting('ytufit_test.main_we_1')::uuid, 1, 'COMPLETED', 8, 60, NULL, NULL, NULL) $$, '42501', NULL, 'Gym Admin cannot record member performance');
+
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated","email":"member-a@ytufit.local"}';
+SELECT ok(public.complete_workout((SELECT id FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000010')) IS NOT NULL, 'Workout owner completes IN_PROGRESS workout');
+SELECT isnt((SELECT completed_at FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000010'), NULL::timestamptz, 'Completed workout sets completed_at server-side');
+SELECT throws_ok($$ SELECT public.complete_workout((SELECT id FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000010')) $$, '55000', NULL, 'Workout cannot be completed twice');
+SELECT throws_ok($$ SELECT public.record_workout_set((SELECT id FROM public.workout_exercises WHERE workout_session_id = (SELECT id FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000010') AND position = 1), 1, 'COMPLETED', 10, 65, NULL, NULL, NULL) $$, '55000', NULL, 'Completed workout performance is immutable');
+SELECT throws_ok($$ SELECT public.cancel_workout((SELECT id FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000010'), 'late cancel') $$, '55000', NULL, 'Completed workout cannot be cancelled');
+
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub":"66666666-6666-6666-6666-666666666666","role":"authenticated","email":"member-a2@ytufit.local"}';
+SELECT ok(public.start_workout('63000000-0000-0000-0000-000000000011') IS NOT NULL, 'Member starts second workout for cancellation flow');
+SELECT ok(public.cancel_workout((SELECT id FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000011'), 'not feeling well') IS NOT NULL, 'Workout owner cancels IN_PROGRESS workout');
+SELECT results_eq($$ SELECT cancellation_reason FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000011' $$, $$ VALUES ('not feeling well'::text) $$, 'Workout cancellation reason is preserved');
+SELECT isnt((SELECT cancelled_at FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000011'), NULL::timestamptz, 'Cancelled workout sets cancelled_at server-side');
+SELECT throws_ok($$ SELECT public.complete_workout((SELECT id FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000011')) $$, '55000', NULL, 'Cancelled workout cannot be completed');
+SELECT throws_ok($$ SELECT public.record_workout_set((SELECT id FROM public.workout_exercises WHERE workout_session_id = (SELECT id FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000011') AND position = 1), 1, 'COMPLETED', 8, 60, NULL, NULL, NULL) $$, '55000', NULL, 'Cancelled workout cannot record further sets');
+
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated","email":"member-a@ytufit.local"}';
+SELECT results_eq($$ SELECT status FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000010' $$, $$ VALUES ('COMPLETED'::public.workout_status) $$, 'Member reads own workout history');
+
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub":"66666666-6666-6666-6666-666666666666","role":"authenticated","email":"member-a2@ytufit.local"}';
+SELECT is_empty($$ SELECT * FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000010' $$, 'Member cannot read another member workout');
+
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated","email":"trainer-a@ytufit.local"}';
+SELECT results_eq($$ SELECT status FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000010' $$, $$ VALUES ('COMPLETED'::public.workout_status) $$, 'Authorized trainer reads member workout history');
+
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub":"77777777-7777-7777-7777-777777777777","role":"authenticated","email":"trainer-b@ytufit.local"}';
+SELECT is_empty($$ SELECT * FROM public.workout_sessions WHERE routine_assignment_id = '63000000-0000-0000-0000-000000000010' $$, 'Unauthorized trainer cannot read workout history');
+
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated","email":"admin-a@ytufit.local"}';
+SELECT results_eq($$ SELECT count(*)::integer FROM public.workout_sessions WHERE gym_id = '00000000-0000-0000-0000-000000000001' $$, $$ VALUES (2) $$, 'Gym Admin reads same-tenant workouts');
+
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub":"44444444-4444-4444-4444-444444444444","role":"authenticated","email":"admin-b@ytufit.local"}';
+SELECT is_empty($$ SELECT * FROM public.workout_sessions WHERE gym_id = '00000000-0000-0000-0000-000000000001' $$, 'Gym Admin cannot read cross-tenant workouts');
+
+SET LOCAL ROLE anon;
+RESET "request.jwt.claims";
+SELECT is_empty($$ SELECT * FROM public.workout_sessions $$, 'Anon cannot read workout sessions');
+SELECT is_empty($$ SELECT * FROM public.workout_exercises $$, 'Anon cannot read workout exercises');
+SELECT is_empty($$ SELECT * FROM public.workout_sets $$, 'Anon cannot read workout sets');
+
+SET LOCAL ROLE postgres;
+RESET "request.jwt.claims";
+SELECT is(relrowsecurity, true, 'workout_sessions has RLS enabled') FROM pg_class WHERE oid = 'public.workout_sessions'::regclass;
+SELECT is(relforcerowsecurity, true, 'workout_sessions has FORCE RLS') FROM pg_class WHERE oid = 'public.workout_sessions'::regclass;
+SELECT is(relrowsecurity, true, 'workout_exercises has RLS enabled') FROM pg_class WHERE oid = 'public.workout_exercises'::regclass;
+SELECT is(relforcerowsecurity, true, 'workout_exercises has FORCE RLS') FROM pg_class WHERE oid = 'public.workout_exercises'::regclass;
+SELECT is(relrowsecurity, true, 'workout_sets has RLS enabled') FROM pg_class WHERE oid = 'public.workout_sets'::regclass;
+SELECT is(relforcerowsecurity, true, 'workout_sets has FORCE RLS') FROM pg_class WHERE oid = 'public.workout_sets'::regclass;
+SELECT is(has_function_privilege('public', 'public.start_workout(uuid)', 'EXECUTE'), false, 'start_workout EXECUTE is revoked from PUBLIC');
+SELECT is(has_function_privilege('public', 'public.record_workout_set(uuid,integer,public.workout_set_status,integer,numeric,integer,numeric,text)', 'EXECUTE'), false, 'record_workout_set EXECUTE is revoked from PUBLIC');
+SELECT is(has_function_privilege('public', 'public.complete_workout(uuid)', 'EXECUTE'), false, 'complete_workout EXECUTE is revoked from PUBLIC');
+SELECT is(has_function_privilege('public', 'public.cancel_workout(uuid,text)', 'EXECUTE'), false, 'cancel_workout EXECUTE is revoked from PUBLIC');
+SELECT is(has_function_privilege('public', 'public."startWorkout"(uuid)', 'EXECUTE'), false, 'startWorkout EXECUTE is revoked from PUBLIC');
+SELECT is(has_function_privilege('public', 'public."recordWorkoutSet"(uuid,integer,public.workout_set_status,integer,numeric,integer,numeric,text)', 'EXECUTE'), false, 'recordWorkoutSet EXECUTE is revoked from PUBLIC');
+SELECT is(has_function_privilege('public', 'public."completeWorkout"(uuid)', 'EXECUTE'), false, 'completeWorkout EXECUTE is revoked from PUBLIC');
+SELECT is(has_function_privilege('public', 'public."cancelWorkout"(uuid,text)', 'EXECUTE'), false, 'cancelWorkout EXECUTE is revoked from PUBLIC');
+
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated","email":"admin-a@ytufit.local"}';
+SELECT throws_ok($$ INSERT INTO public.workout_sessions (gym_id, gym_member_id, routine_assignment_id, routine_id) VALUES ('00000000-0000-0000-0000-000000000001', 'cccccccc-cccc-cccc-cccc-cccccccccccc', '63000000-0000-0000-0000-000000000010', '61000000-0000-0000-0000-000000000010') $$, '42501', NULL, 'Direct DML on workout_sessions is blocked');
+SELECT throws_ok($$ UPDATE public.workout_exercises SET exercise_name = 'forged' WHERE id = (SELECT id FROM public.workout_exercises LIMIT 1) $$, '42501', NULL, 'Direct DML on workout_exercises is blocked');
+SELECT throws_ok($$ INSERT INTO public.workout_sets (gym_id, workout_exercise_id, set_number) VALUES ('00000000-0000-0000-0000-000000000001', (SELECT id FROM public.workout_exercises LIMIT 1), 99) $$, '42501', NULL, 'Direct DML on workout_sets is blocked');
 SET LOCAL ROLE authenticated;
 SET LOCAL "request.jwt.claims" = '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated","email":"member-a@ytufit.local"}';
 SELECT results_eq($$ SELECT trainer_gym_member_id FROM public.trainer_member_assignments WHERE member_gym_member_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc' $$, $$ VALUES ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'::uuid) $$, 'Member can read their trainer-member assignment');
