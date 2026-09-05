@@ -670,6 +670,53 @@ export type Database = {
           },
         ];
       };
+      membership_status_history: {
+        Row: {
+          changed_by: string | null;
+          created_at: string;
+          effective_at: string;
+          event_sequence: number;
+          from_status: Database['public']['Enums']['membership_status'] | null;
+          gym_id: string;
+          id: string;
+          membership_id: string;
+          reason: string | null;
+          to_status: Database['public']['Enums']['membership_status'];
+        };
+        Insert: {
+          changed_by?: string | null;
+          created_at?: string;
+          effective_at: string;
+          event_sequence?: never;
+          from_status?: Database['public']['Enums']['membership_status'] | null;
+          gym_id: string;
+          id?: string;
+          membership_id: string;
+          reason?: string | null;
+          to_status: Database['public']['Enums']['membership_status'];
+        };
+        Update: {
+          changed_by?: string | null;
+          created_at?: string;
+          effective_at?: string;
+          event_sequence?: never;
+          from_status?: Database['public']['Enums']['membership_status'] | null;
+          gym_id?: string;
+          id?: string;
+          membership_id?: string;
+          reason?: string | null;
+          to_status?: Database['public']['Enums']['membership_status'];
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'membership_status_history_membership_fk';
+            columns: ['membership_id', 'gym_id'];
+            isOneToOne: false;
+            referencedRelation: 'memberships';
+            referencedColumns: ['id', 'gym_id'];
+          },
+        ];
+      };
       memberships: {
         Row: {
           access_limit_snapshot: number | null;

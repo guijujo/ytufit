@@ -39,3 +39,41 @@ streak_periods stores weekly period state and snapshots the target and timezone 
 ## Security
 
 All Streak tables have RLS enabled and forced. Authenticated users receive SELECT only; all writes are routed through RPCs or future server-side engine code. Gym Admins can manage tenant rules and read tenant member streak state. Members can read their own assignment history, periods, ledger, and projection. Trainers can read assignment history, periods, and projections only for members they are actively authorized to train; freeze ledger visibility remains member/admin only. Platform Admins do not receive implicit tenant Streak access.
+
+## v2.0.4-2 Membership eligibility history
+
+The Core Streak engine evaluates membership entitlement at `period_start_at` (Monday local midnight converted to an exact `TIMESTAMPTZ`). The audit follow-up adds `public.membership_status_history` in a new migration; the released v2.0.2 migrations remain unchanged.
+
+The immutable ledger stores `id`, `gym_id`, `membership_id`, `from_status`, `to_status`, `effective_at`, `reason`, `changed_by`, `created_at`, and a generated `event_sequence` for deterministic ordering of equal-time transitions. Its composite `(membership_id, gym_id)` foreign key prevents cross-tenant references. `changed_by` is an actor UUID snapshot so removing an auth user cannot rewrite history.
+
+### Authoritative coverage and transitions
+
+`history_coverage_start` is derived as `MIN(effective_at)` over the membership's authoritative ledger entries. It is not inferred from contract dates or current row status.
+
+- Existing memberships receive one migration-time baseline with `from_status = NULL` and their known status. The migration locks Membership writes and installs the baseline and command instrumentation in one transaction. This baseline says nothing about earlier states.
+- Creating a membership records `NULL -> ACTIVE` at server execution time, including new contracts created by renewal or plan replacement. A backdated `starts_at` does not backdate coverage. A future `starts_at` still prevents entitlement before the contract begins.
+- Suspension records `ACTIVE -> SUSPENDED`; successful resume records `SUSPENDED -> ACTIVE`, both at server execution time.
+- Cancellation records `ACTIVE/SUSPENDED -> CANCELLED` at the exact `cancelled_at` assigned by the command, with the cancellation reason. Plan replacement records cancellation of the old contract and the initial event for the new one.
+- Normalization in create/renew records `ACTIVE -> EXPIRED` at normalization time. The contractual `ends_at` independently ends entitlement; the event is not backdated to it. The existing expired-resume error rolls back its attempted normalization and ledger insertion together, preserving Membership business rules.
+
+Every successful command appends its transition in the same transaction as the membership mutation, with `auth.uid()` as actor. A rejected command leaves no event. The recorder serializes on the membership row, checks the previous status and chronological order, and is callable only by the owner-executed commands. No public history-writing RPC or client-controlled timestamp is added.
+
+### Historical eligibility algorithm
+
+For the requested tenant/member, select contracts satisfying `starts_at <= period_start_at AND ends_at > period_start_at`. For each candidate, read the last event ordered by `effective_at DESC, event_sequence DESC` with `effective_at <= period_start_at`.
+
+If any candidate has no event at or before that instant, raise SQLSTATE `55000`, message `Insufficient membership status history`, with membership and period details. This includes an empty history or a period before its baseline. Do not infer a state or return `NOT_ELIGIBLE`; inspect all candidates even if another contract is known to be active. Contract dates can prove absence outside their interval without status history. No covering contracts returns false.
+
+With sufficient history for every candidate, eligibility is true if at least one reconstructed status is `ACTIVE`. `memberships.status`, `updated_at`, and legacy `cancelled_at` are never used as historical status truth. The historical event for a new cancellation uses the command's exact timestamp, not a legacy inference.
+
+Transitions are inclusive at their instant: `effective_at <= period_start_at` is already effective. Suspension exactly Monday is ineligible; suspension one second later preserves that week's eligibility. When transitions share an instant, the later `event_sequence` wins. Contract ends are exclusive, so expiration before or exactly Monday is ineligible, while expiration Wednesday preserves Monday entitlement.
+
+The private engine propagates insufficient-history errors atomically when eligibility is evaluated at closing/replay. Current weeks remain `OPEN` before `period_end_at`; partial initial rule weeks retain their existing independent eligibility rule. Known lack of membership becomes terminal `NOT_ELIGIBLE` only at the end boundary. Later suspension/cancellation leaves earlier covered weeks unchanged, including during freeze replay and projection rebuild.
+
+### Security and test fixtures
+
+History has forced RLS and inherits Membership SELECT visibility through its parent row. Members can read their own contracts, Gym Admins their tenant, and Platform Admins retain existing Membership visibility. This adds no Platform Admin Streak access or permission to execute the private engine. Client and service-role direct history DML is revoked; UPDATE, DELETE, and TRUNCATE also have immutable guards. Private SECURITY DEFINER helpers have a fixed search path and no PUBLIC EXECUTE.
+
+Seed and pgTAP fixtures explicitly insert authoritative historical sequences as the privileged test owner. These synthetic events are not a production backfill algorithm. Legacy periods without such evidence are rejected.
+
+This follow-up changes no access limits, pricing, plan/renewal rules, or Attendance semantics. Streak continues to read Attendance only. There is no Attendance-to-Streak trigger, cron, or v2.0.4-3 integration.

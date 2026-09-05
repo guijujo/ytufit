@@ -114,6 +114,17 @@ INSERT INTO public.memberships (
    10000, 'ARS', 10, 'ACCESS_COUNT', NULL, NULL)
 ON CONFLICT (id) DO NOTHING;
 
+-- Explicit authoritative test history, not a migration/backfill heuristic.
+-- These synthetic contracts were ACTIVE from their fixture inception.
+INSERT INTO public.membership_status_history (
+  gym_id, membership_id, from_status, to_status, effective_at, reason
+) VALUES
+  ('00000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001',
+   NULL, 'ACTIVE', '2020-01-01 00:00:00+00', 'Authoritative seed fixture'),
+  ('00000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000002',
+   NULL, 'ACTIVE', '2020-01-01 00:00:00+00', 'Authoritative seed fixture')
+ON CONFLICT DO NOTHING;
+
 -- 9. Attendance history: valid rows and one retained cancellation.
 INSERT INTO public.attendances (
   id, gym_id, gym_member_id, membership_id, attendance_date, occurred_at,

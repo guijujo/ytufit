@@ -78,6 +78,13 @@ INSERT INTO public.memberships (
   'ACTIVE', now() - interval '30 days', now() - interval '1 day',
   45000, 'ARS', 'UNLIMITED'
 );
+-- Explicit authoritative history for the synthetic expired contract.
+INSERT INTO public.membership_status_history (
+  gym_id, membership_id, from_status, to_status, effective_at, reason
+) VALUES (
+  '00000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000003',
+  NULL, 'ACTIVE', now() - interval '30 days', 'Authoritative test fixture'
+);
 SET LOCAL ROLE authenticated;
 SET LOCAL "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
 SELECT public.renew_membership('30000000-0000-0000-0000-000000000003') IS NOT NULL;
