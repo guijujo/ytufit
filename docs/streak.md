@@ -77,3 +77,11 @@ History has forced RLS and inherits Membership SELECT visibility through its par
 Seed and pgTAP fixtures explicitly insert authoritative historical sequences as the privileged test owner. These synthetic events are not a production backfill algorithm. Legacy periods without such evidence are rejected.
 
 This follow-up changes no access limits, pricing, plan/renewal rules, or Attendance semantics. Streak continues to read Attendance only. There is no Attendance-to-Streak trigger, cron, or v2.0.4-3 integration.
+
+## Historical rule resolution
+
+Rule assignment lifecycle (`SCHEDULED`, `ACTIVE`, `ENDED`) is operational state. It is not used to choose the assignment for a historical week. `private.resolve_streak_rule_for_period` derives the member's tenant from its Streak projection and evaluates every assignment against that assignment's timezone: `starts_at < next Monday 00:00 local` and `ends_at IS NULL OR ends_at > Monday 00:00 local`. These exact `TIMESTAMPTZ` boundaries preserve DST behavior.
+
+Exactly one matching interval is required. No match raises `P0002`; multiple matches raise `23514` with the candidate IDs. Current uniqueness constraints only limit present lifecycle states, so the explicit ambiguity failure also protects malformed overlapping historical `ENDED` rows.
+
+`ensure_streak_period` first returns an existing period, preserving its `member_streak_rule_id`, `timezone_snapshot`, and `target_days_snapshot`. For a new period it calls the temporal resolver without activating lifecycle state. Therefore asking for an old week has no `SCHEDULED -> ACTIVE -> ENDED` side effect. Operational activation remains in `activate_due_streak_rule`, including its normal call from projection recalculation. A new week can be resolved from a due `SCHEDULED` interval before that lifecycle bookkeeping runs; replay of an existing week never re-resolves its snapshots.
